@@ -1,0 +1,25 @@
+{
+  "editor.formatOnSave": true,
+  "editor.tabSize": 2,
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true
+  },
+
+  /* --- Melhorias Visuais e de Leitura --- */
+  "editor.fontSize": 14,
+  "editor.lineHeight": 1.5,
+  "editor.guides.bracketPairs": true,
+  "editor.smoothScrolling": true,
+  "editor.cursorSmoothCaretAnimation": "on",
+  "editor.renderLineHighlight": "none",
+
+  /* --- Cores Agradáveis (Estilo Dark Moderno) --- */
+  "workbench.colorCustomizations": {
+    "activityBar.background": "#510202",
+    "titleBar.activeBackground": "#510202",
+    "editor.background": "#1e1c1c"
+  }
+}
