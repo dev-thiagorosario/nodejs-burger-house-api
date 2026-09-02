@@ -19,4 +19,5 @@ function parsePort(value: string | undefined): number {
 }
 
 export const databaseUrl = requiredEnvironmentVariable('DATABASE_URL');
+export const jwtSecret = requiredEnvironmentVariable('JWT_SECRET');
 export const apiPort = parsePort(process.env.API_PORT);
