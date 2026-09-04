@@ -1,6 +1,6 @@
-import type { IHashProvider } from '../providers/i-hash-provider.js';
+import type { IHashComparer } from '../providers/i-hash-provider.js';
 import type { ITokenProvider } from '../providers/i-token-provider.js';
-import type { IUserRepository } from '../repository/i-user-repository.js';
+import type { IUserReader } from '../repository/i-user-repository.js';
 import { InvalidCredentialsError } from '../exception/invalid-credentials-error.js';
 
 export interface LoginInput {
@@ -20,8 +20,8 @@ export interface LoginOutput {
 
 export class LoginUseCase {
   constructor(
-    private readonly userRepository: IUserRepository,
-    private readonly hashProvider: IHashProvider,
+    private readonly userRepository: IUserReader,
+    private readonly hashProvider: IHashComparer,
     private readonly tokenProvider: ITokenProvider,
   ) { }
 
