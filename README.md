@@ -15,6 +15,41 @@ o servidor. O usuário de teste também é criado automaticamente. A API fica
 disponível diretamente em `http://localhost:3000` e pelo Nginx em
 `http://localhost:8080`.
 
+## Endpoint de cadastro
+
+`POST /register`
+
+```json
+{
+  "fullName": "Thiago Rosario",
+  "email": "thiago@email.com",
+  "password": "Senha123",
+  "cep": "40000-000"
+}
+```
+
+Em caso de sucesso, retorna `201 Created` somente com os dados públicos do novo
+usuário:
+
+```json
+{
+  "success": true,
+  "message": "Usuário criado com sucesso.",
+  "data": {
+    "user": {
+      "id": "a76c2afe-5996-48ca-9262-e01e9b68bdee",
+      "fullName": "Thiago Rosario",
+      "email": "thiago@email.com",
+      "cep": "40000-000"
+    }
+  }
+}
+```
+
+Corpos inválidos retornam `400 Bad Request`. Um email já cadastrado retorna
+`409 Conflict`. A senha deve ter pelo menos oito caracteres, respeitar o limite
+de 72 bytes do bcrypt, é armazenada apenas como hash e nunca aparece na resposta.
+
 ## Endpoint de login
 
 `POST /login`
@@ -85,6 +120,6 @@ npm run build
 
 ## Organização
 
-O fluxo segue `Route → LoginController → LoginUseCase → IUserRepository`. O caso
-de uso depende somente dos contratos de repositório, hash e token; PostgreSQL,
+Os fluxos seguem `Route → Controller → UseCase → IUserRepository`. Os casos de
+uso dependem somente dos contratos de repositório, hash e token; PostgreSQL,
 bcrypt, JWT, Express e Zod ficam nas camadas externas.
