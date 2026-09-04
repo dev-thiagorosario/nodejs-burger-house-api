@@ -2,11 +2,11 @@ import express from 'express';
 import request from 'supertest';
 import { describe, expect, it, vi } from 'vitest';
 
-import { LoginController } from '../../src/controller/login-controller.js';
+import { LoginController } from '../../src/Http/controller/login-controller.js';
 import { User } from '../../src/entities/user-entity.js';
-import type { IHashProvider } from '../../src/providers/i-hash-provider.js';
+import type { IHashComparer } from '../../src/providers/i-hash-provider.js';
 import type { ITokenProvider } from '../../src/providers/i-token-provider.js';
-import type { IUserRepository } from '../../src/repository/i-user-repository.js';
+import type { IUserReader } from '../../src/repository/i-user-repository.js';
 import { LoginUseCase } from '../../src/use-case/login-use-case.js';
 
 function createApp(options: { userExists?: boolean; passwordMatches?: boolean }) {
@@ -23,10 +23,10 @@ function createApp(options: { userExists?: boolean; passwordMatches?: boolean })
     findByEmail: vi.fn(async () =>
       options.userExists === false ? null : user,
     ),
-  } satisfies IUserRepository;
+  } satisfies IUserReader;
   const hashProvider = {
     compare: vi.fn(async () => options.passwordMatches !== false),
-  } satisfies IHashProvider;
+  } satisfies IHashComparer;
   const tokenProvider = {
     generate: vi.fn(() => 'signed-jwt'),
   } satisfies ITokenProvider;

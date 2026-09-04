@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { User } from '../../src/entities/user-entity.js';
-import type { IHashProvider } from '../../src/providers/i-hash-provider.js';
+import type { IHashComparer } from '../../src/providers/i-hash-provider.js';
 import type { ITokenProvider } from '../../src/providers/i-token-provider.js';
-import type { IUserRepository } from '../../src/repository/i-user-repository.js';
+import type { IUserReader } from '../../src/repository/i-user-repository.js';
 import { InvalidCredentialsError } from '../../src/exception/invalid-credentials-error.js';
 import { LoginUseCase } from '../../src/use-case/login-use-case.js';
 
@@ -23,10 +23,10 @@ function createDependencies(
 ) {
   const userRepository = {
     findByEmail: vi.fn(async (): Promise<User | null> => foundUser),
-  } satisfies IUserRepository;
+  } satisfies IUserReader;
   const hashProvider = {
     compare: vi.fn(async () => passwordMatches),
-  } satisfies IHashProvider;
+  } satisfies IHashComparer;
   const tokenProvider = {
     generate: vi.fn(() => 'signed-jwt'),
   } satisfies ITokenProvider;
