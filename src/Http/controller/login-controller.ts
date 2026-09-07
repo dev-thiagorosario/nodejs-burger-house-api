@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { InvalidCredentialsError } from '../../exception/invalid-credentials-error.js';
 import type { LoginUseCase } from '../../use-case/login-use-case.js';
+import { setAuthCookie } from '../helper/auth-cookie.js';
 
 const loginBodySchema = z.object({
   email: z
@@ -39,6 +40,9 @@ export class LoginController {
 
     try {
       const result = await this.loginUseCase.execute(body.data);
+
+      setAuthCookie(response, result.token);
+
       response.status(200).json({
         success: true,
         message: 'Login realizado com sucesso.',

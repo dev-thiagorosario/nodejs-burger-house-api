@@ -9,7 +9,10 @@ import { apiPort } from './config.js';
 const app = express();
 
 app.disable('x-powered-by');
-app.use(cors());
+app.use(cors({
+  origin: "http://localhost:5173",
+  credentials: true,
+}));
 app.use(express.json());
 app.use(apiRouter);
 app.use(
