@@ -1,4 +1,5 @@
 import express from 'express';
+import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -29,6 +30,7 @@ function createApp(options: { userExists?: boolean; passwordMatches?: boolean })
   } satisfies IHashComparer;
   const tokenProvider = {
     generate: vi.fn(() => 'signed-jwt'),
+    verify: vi.fn(() => ({ userId: user.id })),
   } satisfies ITokenProvider;
   const useCase = new LoginUseCase(
     userRepository,
@@ -39,23 +41,44 @@ function createApp(options: { userExists?: boolean; passwordMatches?: boolean })
   const app = express();
 
   app.use(express.json());
+  app.use(cookieParser());
   app.post('/login', controller.handle);
+  app.get('/cookie-check', (req, res) => {
+    res.json({ tokenWasRead: req.cookies.access_token === 'signed-jwt' });
+  });
 
   return app;
 }
 
 describe('LoginController', () => {
-  it('responds with 200, a message, a token and public user data', async () => {
+  it('reads the login cookie on a subsequent request', async () => {
+    const app = createApp({});
+    const login = await request(app).post('/login').send({
+      email: 'thiago@email.com',
+      password: 'plain-password',
+    });
+    const cookies = login.headers['set-cookie'] as unknown as string[];
+    const response = await request(app).get('/cookie-check').set(
+      'Cookie', cookies.map((cookie) => cookie.split(';')[0]).join('; '),
+    );
+
+    expect(response.body).toEqual({ tokenWasRead: true });
+  });
+
+  it('responds with 200, a message, an HttpOnly cookie and only public user data', async () => {
     const response = await request(createApp({}))
       .post('/login')
       .send({ email: 'thiago@email.com', password: 'plain-password' });
 
     expect(response.status).toBe(200);
+    expect(response.headers['set-cookie']).toEqual([
+      expect.stringMatching(/^access_token=signed-jwt;.*HttpOnly.*SameSite=Lax/),
+    ]);
+    expect(JSON.stringify(response.body)).not.toContain('signed-jwt');
     expect(response.body).toEqual({
       success: true,
       message: 'Login realizado com sucesso.',
       data: {
-        token: 'signed-jwt',
         user: {
           id: 'a76c2afe-5996-48ca-9262-e01e9b68bdee',
           fullName: 'Thiago Rosario',
