@@ -1,6 +1,6 @@
 import type { CookieOptions, Response } from "express";
 
-const AUTH_COOKIE_NAME = 'acess_token';
+export const AUTH_COOKIE_NAME = 'access_token';
 
 const ONE_DAY_IN_MILLISECONDS = 1000 * 60 * 60 * 24;
 
@@ -24,5 +24,4 @@ const ONE_DAY_IN_MILLISECONDS = 1000 * 60 * 60 * 24;
   {
     response.clearCookie(AUTH_COOKIE_NAME,{ ...getAuthCookieOptions(), maxAge: undefined });
   }
-
 

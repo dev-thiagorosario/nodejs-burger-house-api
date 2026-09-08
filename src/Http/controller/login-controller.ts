@@ -46,7 +46,9 @@ export class LoginController {
       response.status(200).json({
         success: true,
         message: 'Login realizado com sucesso.',
-        data: result,
+        data: {
+          user: result.user,
+        },
       });
     } catch (error: unknown) {
       if (error instanceof InvalidCredentialsError) {

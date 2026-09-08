@@ -2,6 +2,7 @@ import 'dotenv/config';
 
 import cors from 'cors';
 import express from 'express';
+import cookieParser from 'cookie-parser';
 
 import apiRouter, { closeApiDependencies } from '../routes/api.js';
 import { apiPort } from './config.js';
@@ -14,6 +15,7 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json());
+app.use(cookieParser());
 app.use(apiRouter);
 app.use(
   (
