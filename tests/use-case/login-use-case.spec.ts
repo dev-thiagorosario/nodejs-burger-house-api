@@ -29,6 +29,7 @@ function createDependencies(
   } satisfies IHashComparer;
   const tokenProvider = {
     generate: vi.fn(() => 'signed-jwt'),
+    verify: vi.fn(() => ({ userId: user.id })),
   } satisfies ITokenProvider;
 
   return { userRepository, hashProvider, tokenProvider };

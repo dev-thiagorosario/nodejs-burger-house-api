@@ -2,6 +2,7 @@ import 'dotenv/config';
 
 import cors from 'cors';
 import express from 'express';
+import cookieParser from 'cookie-parser';
 
 import apiRouter, { closeApiDependencies } from '../routes/api.js';
 import { apiPort } from './config.js';
@@ -9,8 +10,12 @@ import { apiPort } from './config.js';
 const app = express();
 
 app.disable('x-powered-by');
-app.use(cors());
+app.use(cors({
+  origin: "http://localhost:5173",
+  credentials: true,
+}));
 app.use(express.json());
+app.use(cookieParser());
 app.use(apiRouter);
 app.use(
   (

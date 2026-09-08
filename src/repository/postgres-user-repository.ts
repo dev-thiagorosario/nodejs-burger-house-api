@@ -42,6 +42,26 @@ function isEmailUniqueViolation(error: unknown): boolean {
 export class PostgresUserRepository implements IUserRepository {
   constructor(private readonly pool: Pool) {}
 
+  async findById(id: string): Promise<User | null> {
+    const result = await this.pool.query<UserRow>(
+      `
+        SELECT id, full_name, email, password_hash, cep, created_at, updated_at
+        FROM users
+        WHERE id = $1
+        LIMIT 1
+      `,
+      [id],
+    );
+
+    const row = result.rows[0];
+
+    if (!row) {
+      return null;
+    }
+
+    return toUser(row);
+  }
+
   async findByEmail(email: string): Promise<User | null> {
     const result = await this.pool.query<UserRow>(
       `
