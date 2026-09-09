@@ -40,7 +40,8 @@ usuário:
       "id": "a76c2afe-5996-48ca-9262-e01e9b68bdee",
       "fullName": "Thiago Rosario",
       "email": "thiago@email.com",
-      "cep": "40000-000"
+      "cep": "40000-000",
+      "isAdmin": false
     }
   }
 }
@@ -73,7 +74,8 @@ por um dia e retorna `200 OK` com uma mensagem e os dados públicos do usuário:
       "id": "a76c2afe-5996-48ca-9262-e01e9b68bdee",
       "fullName": "Thiago Rosario",
       "email": "thiago@email.com",
-      "cep": "40000-000"
+      "cep": "40000-000",
+      "isAdmin": false
     }
   }
 }
@@ -140,3 +142,5 @@ npm run build
 Os fluxos seguem `Route → Controller → UseCase → IUserRepository`. Os casos de
 uso dependem somente dos contratos de repositório, hash e token; PostgreSQL,
 bcrypt, JWT, Express e Zod ficam nas camadas externas.
+
+O cadastro público cria usuários com `isAdmin: false` e não aceita esse campo no corpo da requisição. O caso de uso de criação aceita `isAdmin` opcionalmente para chamadas internas autorizadas. Cadastro, login e consulta do usuário atual retornam `isAdmin`.

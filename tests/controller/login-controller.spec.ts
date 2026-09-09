@@ -21,6 +21,7 @@ function createApp(options: { userExists?: boolean; passwordMatches?: boolean })
     updatedAt: new Date('2026-09-01T12:00:00.000Z'),
   });
   const userRepository = {
+    findById: vi.fn(async (): Promise<User | null> => null),
     findByEmail: vi.fn(async () =>
       options.userExists === false ? null : user,
     ),
@@ -84,6 +85,7 @@ describe('LoginController', () => {
           fullName: 'Thiago Rosario',
           email: 'thiago@email.com',
           cep: '40000-000',
+          isAdmin: false,
         },
       },
     });

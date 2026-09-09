@@ -12,6 +12,7 @@ function setup(userExists = true) {
     fullName: 'Thiago Rosario',
     email: 'thiago@email.com',
     cep: '40000-000',
+    isAdmin: true,
     passwordHash: 'private-hash',
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -48,7 +49,7 @@ describe('GetCurrentUserController', () => {
     expect(response.status).toHaveBeenCalledWith(200);
     expect(response.json).toHaveBeenCalledWith({
       success: true,
-      data: { user: { id: user.id, fullName: user.fullName, email: user.email, cep: user.cep } },
+      data: { user: { id: user.id, fullName: user.fullName, email: user.email, cep: user.cep, isAdmin: true } },
     });
     expect(next).not.toHaveBeenCalled();
   });

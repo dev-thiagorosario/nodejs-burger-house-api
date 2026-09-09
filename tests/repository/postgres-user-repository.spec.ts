@@ -11,6 +11,7 @@ const user = new User({
   email: 'thiago@email.com',
   passwordHash: '$2b$12$stored-password-hash',
   cep: '40000-000',
+  isAdmin: true,
   createdAt: new Date('2026-09-01T12:00:00.000Z'),
   updatedAt: new Date('2026-09-01T12:00:00.000Z'),
 });
@@ -21,6 +22,7 @@ const userRow = {
   email: user.email,
   password_hash: user.passwordHash,
   cep: user.cep,
+  is_admin: user.isAdmin,
   created_at: user.createdAt,
   updated_at: user.updatedAt,
 };
@@ -39,6 +41,7 @@ describe('PostgresUserRepository.create', () => {
       user.email,
       user.passwordHash,
       user.cep,
+      user.isAdmin,
       user.createdAt,
       user.updatedAt,
     ]);
@@ -63,5 +66,18 @@ describe('PostgresUserRepository.create', () => {
     const repository = new PostgresUserRepository({ query } as unknown as Pool);
 
     await expect(repository.create(user)).rejects.toBe(databaseError);
+  });
+});
+
+
+describe('PostgresUserRepository reads', () => {
+  it.each([true, false])('preserves is_admin=%s in both lookup methods', async (isAdmin) => {
+    const query = vi.fn(async () => ({ rows: [{ ...userRow, is_admin: isAdmin }] }));
+    const repository = new PostgresUserRepository({ query } as unknown as Pool);
+    expect((await repository.findById(user.id))?.isAdmin).toBe(isAdmin);
+    expect((await repository.findByEmail(user.email))?.isAdmin).toBe(isAdmin);
+    for (const [sql] of query.mock.calls as unknown as [string][]) {
+      expect(sql).toContain('is_admin');
+    }
   });
 });

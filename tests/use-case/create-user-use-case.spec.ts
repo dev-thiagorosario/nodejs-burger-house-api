@@ -19,6 +19,7 @@ const existingUser = new User({
 
 function createDependencies(foundUser: User | null = null) {
   const userRepository = {
+    findById: vi.fn(async (): Promise<User | null> => null),
     findByEmail: vi.fn(async () => foundUser),
     create: vi.fn(async (user: User) => user),
   } satisfies IUserRepository;
@@ -52,6 +53,7 @@ describe('CreateUserUseCase', () => {
       fullName: 'Thiago Rosario',
       email: 'thiago@email.com',
       cep: '40000-000',
+      isAdmin: false,
     });
     expect(dependencies.userRepository.findByEmail).toHaveBeenCalledWith(
       'thiago@email.com',
@@ -65,6 +67,17 @@ describe('CreateUserUseCase', () => {
       '$2b$12$generated-password-hash',
     );
     expect(result).not.toHaveProperty('passwordHash');
+  });
+
+  it('allows internal creation of an administrator', async () => {
+    const dependencies = createDependencies();
+    const useCase = new CreateUserUseCase(dependencies.userRepository, dependencies.hashProvider);
+    const result = await useCase.execute({
+      fullName: 'Admin User', email: 'admin@email.com',
+      password: 'Senha123', cep: '40000-000', isAdmin: true,
+    });
+    expect(result.isAdmin).toBe(true);
+    expect(dependencies.userRepository.create.mock.calls[0]?.[0].isAdmin).toBe(true);
   });
 
   it('rejects an existing email without hashing or creating a user', async () => {

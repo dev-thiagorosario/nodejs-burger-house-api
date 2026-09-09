@@ -10,6 +10,7 @@ interface UserRow {
   email: string;
   password_hash: string;
   cep: string;
+  is_admin: boolean;
   created_at: Date;
   updated_at: Date;
 }
@@ -21,6 +22,7 @@ function toUser(row: UserRow): User {
     email: row.email,
     passwordHash: row.password_hash,
     cep: row.cep,
+    isAdmin: row.is_admin,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   });
@@ -45,7 +47,7 @@ export class PostgresUserRepository implements IUserRepository {
   async findById(id: string): Promise<User | null> {
     const result = await this.pool.query<UserRow>(
       `
-        SELECT id, full_name, email, password_hash, cep, created_at, updated_at
+        SELECT id, full_name, email, password_hash, cep, is_admin, created_at, updated_at
         FROM users
         WHERE id = $1
         LIMIT 1
@@ -65,7 +67,7 @@ export class PostgresUserRepository implements IUserRepository {
   async findByEmail(email: string): Promise<User | null> {
     const result = await this.pool.query<UserRow>(
       `
-        SELECT id, full_name, email, password_hash, cep, created_at, updated_at
+        SELECT id, full_name, email, password_hash, cep, is_admin, created_at, updated_at
         FROM users
         WHERE email = $1
         LIMIT 1
@@ -92,11 +94,12 @@ export class PostgresUserRepository implements IUserRepository {
             email,
             password_hash,
             cep,
+            is_admin,
             created_at,
             updated_at
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7)
-          RETURNING id, full_name, email, password_hash, cep, created_at, updated_at
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          RETURNING id, full_name, email, password_hash, cep, is_admin, created_at, updated_at
         `,
         [
           user.id,
@@ -104,6 +107,7 @@ export class PostgresUserRepository implements IUserRepository {
           user.email,
           user.passwordHash,
           user.cep,
+          user.isAdmin,
           user.createdAt,
           user.updatedAt,
         ],

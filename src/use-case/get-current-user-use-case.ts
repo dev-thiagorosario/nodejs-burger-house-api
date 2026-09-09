@@ -6,6 +6,7 @@ export interface GetCurrentUserOutput {
   fullName: string;
   email: string;
   cep: string;
+  isAdmin: boolean;
 }
 
 
@@ -25,6 +26,7 @@ export class GetCurrentUserUseCase {
       fullName: user.fullName,
       email: user.email,
       cep: user.cep,
+      isAdmin: user.isAdmin,
     };
   }
 }
