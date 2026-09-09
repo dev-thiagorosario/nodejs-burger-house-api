@@ -61,15 +61,14 @@ de 72 bytes do bcrypt, é armazenada apenas como hash e nunca aparece na respost
 }
 ```
 
-Em caso de sucesso, retorna `200 OK` com uma mensagem, um JWT válido por um dia
-e os dados do usuário que podem ser expostos ao cliente:
+Em caso de sucesso, define o cookie HttpOnly `access_token` com um JWT válido
+por um dia e retorna `200 OK` com uma mensagem e os dados públicos do usuário:
 
 ```json
 {
   "success": true,
   "message": "Login realizado com sucesso.",
   "data": {
-    "token": "eyJhbGciOiJIUzI1NiIs...",
     "user": {
       "id": "a76c2afe-5996-48ca-9262-e01e9b68bdee",
       "fullName": "Thiago Rosario",
@@ -98,6 +97,24 @@ Credenciais incorretas retornam `401 Unauthorized`; corpos inválidos retornam
 
 E-mails são normalizados para letras minúsculas antes da consulta. As senhas são
 comparadas com bcrypt e nunca retornam na resposta.
+
+## Endpoint de logout
+
+`POST /logout`
+
+Não exige corpo e remove o cookie `access_token`. Retorna `200 OK` mesmo se o
+cookie estiver ausente, inválido ou expirado:
+
+```json
+{
+  "success": true,
+  "message": "Logout realizado com sucesso."
+}
+```
+
+No frontend, envie a requisição com `credentials: 'include'` para que o navegador
+processe o cookie quando a API estiver em outra origem. O logout remove o cookie,
+mas não revoga cópias do JWT, que permanecem válidas até a expiração.
 
 ## Desenvolvimento local
 
