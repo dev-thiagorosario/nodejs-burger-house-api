@@ -17,6 +17,16 @@ const validProps: UserProps = {
 };
 
 describe('User', () => {
+  it('defaults to a regular user and preserves explicit admin values', () => {
+    expect(new User(validProps).isAdmin).toBe(false);
+    expect(new User({ ...validProps, isAdmin: false }).isAdmin).toBe(false);
+    expect(new User({ ...validProps, isAdmin: true }).isAdmin).toBe(true);
+  });
+
+  it.each(['true', 1, null])('rejects a non-boolean admin flag (%j)', (isAdmin) => {
+    expect(() => new User({ ...validProps, isAdmin } as unknown as UserProps)).toThrow(InvalidUserError);
+  });
+
   it('normalizes the name and email', () => {
     const user = new User({
       ...validProps,

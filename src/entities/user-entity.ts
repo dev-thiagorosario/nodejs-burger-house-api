@@ -9,6 +9,7 @@ export interface UserProps {
   email: string;
   passwordHash: string;
   cep: string;
+  isAdmin?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,6 +27,7 @@ export class User {
   public readonly email: string;
   public readonly passwordHash: string;
   public readonly cep: string;
+  public readonly isAdmin: boolean;
 
   private readonly createdAtValue: Date;
   private readonly updatedAtValue: Date;
@@ -70,11 +72,16 @@ export class User {
       );
     }
 
+    if (props.isAdmin !== undefined && typeof props.isAdmin !== 'boolean') {
+      throw new InvalidUserError('O campo isAdmin deve ser um booleano.');
+    }
+
     this.id = id;
     this.fullName = fullName;
     this.email = email;
     this.passwordHash = props.passwordHash;
     this.cep = props.cep;
+    this.isAdmin = props.isAdmin ?? false;
     this.createdAtValue = new Date(props.createdAt);
     this.updatedAtValue = new Date(props.updatedAt);
   }

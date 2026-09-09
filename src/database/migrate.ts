@@ -5,13 +5,14 @@ import type { PoolClient } from 'pg';
 import { databaseUrl } from '../core/config.js';
 import { createPostgresPool } from './data-source.js';
 import * as createUsers from './migrations/001-create-users.js';
+import * as addIsAdminToUsers from './migrations/002-add-is-admin-to-users.js';
 
 interface Migration {
   id: string;
   up(client: PoolClient): Promise<void>;
 }
 
-const migrations: Migration[] = [createUsers];
+const migrations: Migration[] = [createUsers, addIsAdminToUsers];
 const pool = createPostgresPool(databaseUrl);
 
 async function migrate(): Promise<void> {
