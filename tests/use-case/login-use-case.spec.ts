@@ -13,6 +13,7 @@ const user = new User({
   email: 'thiago@email.com',
   passwordHash: '$2b$10$stored-password-hash',
   cep: '40000-000',
+  isAdmin: true,
   createdAt: new Date('2026-09-01T12:00:00.000Z'),
   updatedAt: new Date('2026-09-01T12:00:00.000Z'),
 });
@@ -22,6 +23,7 @@ function createDependencies(
   passwordMatches = true,
 ) {
   const userRepository = {
+    findById: vi.fn(async (): Promise<User | null> => null),
     findByEmail: vi.fn(async (): Promise<User | null> => foundUser),
   } satisfies IUserReader;
   const hashProvider = {
@@ -56,6 +58,7 @@ describe('LoginUseCase', () => {
         fullName: user.fullName,
         email: user.email,
         cep: user.cep,
+        isAdmin: true,
       },
     });
     expect(dependencies.userRepository.findByEmail).toHaveBeenCalledWith(

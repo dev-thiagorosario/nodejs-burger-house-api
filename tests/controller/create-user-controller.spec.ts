@@ -22,6 +22,7 @@ function createApp(options: {
     updatedAt: new Date('2026-09-01T12:00:00.000Z'),
   });
   const userRepository = {
+    findById: vi.fn(async (): Promise<User | null> => null),
     findByEmail: vi.fn(async () =>
       options.userExists === true ? existingUser : null,
     ),
@@ -81,10 +82,19 @@ describe('CreateUserController', () => {
           fullName: 'Thiago Rosario',
           email: 'thiago@email.com',
           cep: '40000-000',
+          isAdmin: false,
         },
       },
     });
     expect(JSON.stringify(response.body)).not.toContain('password');
+  });
+
+  it('rejects attempts to self-register as an administrator', async () => {
+    const response = await request(createApp()).post('/register').send({
+      fullName: 'Admin User', email: 'admin@email.com',
+      password: 'Senha123', cep: '40000-000', isAdmin: true,
+    });
+    expect(response.status).toBe(400);
   });
 
   it('responds with 400 and field errors when the body is invalid', async () => {

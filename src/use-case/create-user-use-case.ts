@@ -11,6 +11,7 @@ export interface CreateUserInput {
   email: string;
   password: string;
   cep: string;
+  isAdmin?: boolean;
 }
 
 export interface CreateUserOutput {
@@ -18,6 +19,7 @@ export interface CreateUserOutput {
   fullName: string;
   email: string;
   cep: string;
+  isAdmin: boolean;
 }
 
 export class CreateUserUseCase {
@@ -45,6 +47,7 @@ export class CreateUserUseCase {
       email: normalizedEmail,
       passwordHash,
       cep: input.cep.trim(),
+      isAdmin: input.isAdmin ?? false,
       createdAt: now,
       updatedAt: now,
     });
@@ -55,6 +58,7 @@ export class CreateUserUseCase {
       fullName: createdUser.fullName,
       email: createdUser.email,
       cep: createdUser.cep,
+      isAdmin: createdUser.isAdmin,
     };
   }
 }
