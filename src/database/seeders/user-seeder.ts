@@ -6,12 +6,22 @@ import { hash } from 'bcryptjs';
 
 import { createPostgresPool } from '../data-source.js';
 
-const TEST_USER = {
-  fullName: 'Thiago',
-  email: 'thiago@email.com',
-  password: 'Senha123',
-  cep: '40000-000',
-} as const;
+const TEST_USERS = [
+  {
+    fullName: 'Thiago',
+    email: 'thiago@email.com',
+    password: 'Senha123',
+    cep: '40000-000',
+    isAdmin: false,
+  },
+  {
+    fullName: 'Administrador',
+    email: 'admin@email.com',
+    password: 'Senha123',
+    cep: '40000-000',
+    isAdmin: true,
+  },
+] as const;
 
 const databaseUrl = process.env.DATABASE_URL;
 
@@ -21,34 +31,38 @@ if (!databaseUrl) {
 
 const pool = createPostgresPool(databaseUrl);
 
-async function seedUser(): Promise<void> {
-  const passwordHash = await hash(TEST_USER.password, 10);
+async function seedUsers(): Promise<void> {
+  for (const user of TEST_USERS) {
+    const passwordHash = await hash(user.password, 10);
 
-  await pool.query(
-    `
-      INSERT INTO users (id, full_name, email, password_hash, cep)
-      VALUES ($1, $2, $3, $4, $5)
-      ON CONFLICT ((lower(email))) DO UPDATE SET
-        full_name = EXCLUDED.full_name,
-        password_hash = EXCLUDED.password_hash,
-        cep = EXCLUDED.cep,
-        updated_at = now()
-    `,
-    [
-      randomUUID(),
-      TEST_USER.fullName,
-      TEST_USER.email,
-      passwordHash,
-      TEST_USER.cep,
-    ],
-  );
+    await pool.query(
+      `
+        INSERT INTO users (id, full_name, email, password_hash, cep, is_admin)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        ON CONFLICT ((lower(email))) DO UPDATE SET
+          full_name = EXCLUDED.full_name,
+          password_hash = EXCLUDED.password_hash,
+          cep = EXCLUDED.cep,
+          is_admin = users.is_admin OR EXCLUDED.is_admin,
+          updated_at = now()
+      `,
+      [
+        randomUUID(),
+        user.fullName,
+        user.email,
+        passwordHash,
+        user.cep,
+        user.isAdmin,
+      ],
+    );
 
-  console.log(`Usuário de teste criado: ${TEST_USER.email}`);
+    console.log(`Usuário de teste criado: ${user.email}`);
+  }
 }
 
-seedUser()
+seedUsers()
   .catch((error: unknown) => {
-    console.error('Falha ao criar o usuário de teste.', error);
+    console.error('Falha ao criar os usuários de teste.', error);
     process.exitCode = 1;
   })
   .finally(async () => {
