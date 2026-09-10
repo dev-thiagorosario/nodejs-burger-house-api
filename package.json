@@ -11,6 +11,10 @@
     "start": "node dist/core/index.js",
     "db:migrate": "tsx src/database/migrate.ts",
     "db:seed": "tsx src/database/seeders/user-seeder.ts",
+    "db:seed:product-categories": "tsx src/database/seeders/product-category-seeder.ts",
+    "db:seed:burguer-products": "tsx src/database/seeders/burguer-product-seeder.ts",
+    "db:seed:order-statuses": "tsx src/database/seeders/order-statuses-seeder.ts",
+    "db:seed:orders": "npm run db:seed:order-statuses && tsx src/database/seeders/orders-seeder.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"

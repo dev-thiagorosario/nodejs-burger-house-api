@@ -6,13 +6,27 @@ import { databaseUrl } from '../core/config.js';
 import { createPostgresPool } from './data-source.js';
 import * as createUsers from './migrations/001-create-users.js';
 import * as addIsAdminToUsers from './migrations/002-add-is-admin-to-users.js';
+import * as createOrderStatuses from './migrations/003-create-order-statuses.js';
+import * as createProducts from './migrations/004-create-products.js';
+import * as createProductCategories from './migrations/005-create-product-categories.js';
+import * as createOrders from './migrations/006-create-orders.js';
+import * as createOrderItems from './migrations/007-create-order-items.js';
 
 interface Migration {
   id: string;
   up(client: PoolClient): Promise<void>;
 }
 
-const migrations: Migration[] = [createUsers, addIsAdminToUsers];
+const migrations: Migration[] = [
+  createUsers,
+  addIsAdminToUsers,
+  createOrderStatuses,
+  // Categories must exist before products because of the foreign key.
+  createProductCategories,
+  createProducts,
+  createOrders,
+  createOrderItems,
+];
 const pool = createPostgresPool(databaseUrl);
 
 async function migrate(): Promise<void> {
