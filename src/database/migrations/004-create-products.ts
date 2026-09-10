@@ -5,18 +5,20 @@ export const id = '004-create-products';
 export async function up(client: PoolClient): Promise<void> {
   await client.query(`
     CREATE TABLE products (
-      id uuid PRIMARY KEY,
+      id varchar(255) PRIMARY KEY,
       title varchar(255) NOT NULL,
       description text NOT NULL,
       image text NOT NULL,
-      mobile_image text,
+      mobile_image text NOT NULL,
       image_alt text,
       price numeric(10, 2) NOT NULL,
       category_id smallint NOT NULL REFERENCES product_categories (id),
       created_at timestamptz NOT NULL DEFAULT now(),
       updated_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT products_id_not_blank CHECK (length(trim(id)) > 0),
       CONSTRAINT products_title_not_blank CHECK (length(trim(title)) > 0),
       CONSTRAINT products_image_not_blank CHECK (length(trim(image)) > 0),
+      CONSTRAINT products_mobile_image_not_blank CHECK (length(trim(mobile_image)) > 0),
       CONSTRAINT products_price_non_negative CHECK (price >= 0 AND price <> 'NaN'::numeric)
     )
   `);

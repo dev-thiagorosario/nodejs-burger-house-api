@@ -18,7 +18,7 @@ async function seedOrderStatuses(): Promise<void> {
       ON CONFLICT (id) DO UPDATE SET
         name = EXCLUDED.name
     `,
-    [1, 'Pendente', 2, 'Retirado', 3, 'Cancelado'],
+    [1, 'pending', 2, 'pickedUp', 3, 'cancelled'],
   );
 
   console.log('Status dos pedidos populados com sucesso.');
