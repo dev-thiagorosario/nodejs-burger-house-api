@@ -1,3 +1,4 @@
+import { productImageUrl, type ProductImage } from '../../entities/product-image.js';
 import type { Product } from '../../entities/product-entity.js';
 
 export interface ProductOutput {
@@ -6,8 +7,7 @@ export interface ProductOutput {
   description: string;
   price: number;
   categoryId: number;
-  imageUrl: string;
-  mobileImageUrl: string;
+  images: Array<ProductImage & { url: string }>;
   imageAlt: string;
   isActive: boolean;
   createdAt: Date;
@@ -21,8 +21,7 @@ export function toProductOutput(product: Product): ProductOutput {
     description: product.description,
     price: product.price,
     categoryId: product.categoryId,
-    imageUrl: product.imageUrl,
-    mobileImageUrl: product.mobileImageUrl,
+    images: product.images.map((image) => ({ ...image, url: productImageUrl(product.id, image.variant) })),
     imageAlt: product.imageAlt,
     isActive: product.isActive,
     createdAt: product.createdAt,
