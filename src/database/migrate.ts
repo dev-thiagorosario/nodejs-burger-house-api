@@ -12,6 +12,9 @@ import * as createProductCategories from './migrations/005-create-product-catego
 import * as createOrders from './migrations/006-create-orders.js';
 import * as createOrderItems from './migrations/007-create-order-items.js';
 import * as addIsActiveToProducts from './migrations/008-add-is-active-to-products.js';
+import * as createProductImages from './migrations/009-create-product-images.js';
+
+import * as removeProductImageColumns from './migrations/010-remove-product-image-columns.js';
 
 interface Migration {
   id: string;
@@ -28,6 +31,8 @@ const migrations: Migration[] = [
   createOrders,
   createOrderItems,
   addIsActiveToProducts,
+  createProductImages,
+  removeProductImageColumns,
 ];
 const pool = createPostgresPool(databaseUrl);
 
