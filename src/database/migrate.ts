@@ -11,6 +11,7 @@ import * as createProducts from './migrations/004-create-products.js';
 import * as createProductCategories from './migrations/005-create-product-categories.js';
 import * as createOrders from './migrations/006-create-orders.js';
 import * as createOrderItems from './migrations/007-create-order-items.js';
+import * as addIsActiveToProducts from './migrations/008-add-is-active-to-products.js';
 
 interface Migration {
   id: string;
@@ -26,6 +27,7 @@ const migrations: Migration[] = [
   createProducts,
   createOrders,
   createOrderItems,
+  addIsActiveToProducts,
 ];
 const pool = createPostgresPool(databaseUrl);
 
