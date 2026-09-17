@@ -1,3 +1,4 @@
+import type { ProductImage } from './product-image.js';
 import { ProductCategory, InvalidProductCategoryError } from '../value-object/product-category-value-object.js';
 
 export interface ProductProps {
@@ -6,8 +7,7 @@ export interface ProductProps {
   description: string;
   price: number;
   categoryId: number;
-  imageUrl: string;
-  mobileImageUrl: string;
+  images?: readonly ProductImage[];
   imageAlt?: string;
   isActive?: boolean;
   createdAt: Date;
@@ -23,8 +23,7 @@ export class InvalidProductError extends Error {
 
 export class Product {
   public readonly id: string;
-  private imageUrlValue: string;
-  private mobileImageUrlValue: string;
+  private readonly imagesValue: readonly ProductImage[];
   private imageAltValue: string;
 
   private nameValue: string;
@@ -45,7 +44,7 @@ export class Product {
 
     this.validateName(props.name);
     this.validatePrice(props.price);
-    this.validateImages(props.imageUrl, props.mobileImageUrl);
+
     const category = this.createCategory(props.categoryId);
 
     if (props.isActive !== undefined && typeof props.isActive !== 'boolean') {
@@ -70,8 +69,13 @@ export class Product {
     this.descriptionValue = props.description;
     this.priceValue = props.price;
     this.categoryValue = category;
-    this.imageUrlValue = props.imageUrl.trim();
-    this.mobileImageUrlValue = props.mobileImageUrl.trim();
+    const images = props.images ?? [];
+    if (new Set(images.map((image) => image.variant)).size !== images.length ||
+      images.some((image) => !['desktop', 'mobile'].includes(image.variant) || !image.fileName.trim() ||
+        !['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'].includes(image.mimeType))) {
+      throw new InvalidProductError('As imagens do produto são inválidas.');
+    }
+    this.imagesValue = images.map(({ variant, fileName, mimeType }) => ({ variant, fileName, mimeType }));
     this.imageAltValue = props.imageAlt?.trim() || this.nameValue;
     this.isActiveValue = props.isActive ?? true;
     this.createdAtValue = new Date(props.createdAt);
@@ -79,8 +83,7 @@ export class Product {
   }
 
   get name(): string { return this.nameValue; }
-  get imageUrl(): string { return this.imageUrlValue; }
-  get mobileImageUrl(): string { return this.mobileImageUrlValue; }
+  get images(): ProductImage[] { return this.imagesValue.map((image) => ({ ...image })); }
   get imageAlt(): string { return this.imageAltValue; }
   get description(): string { return this.descriptionValue; }
   get price(): number { return this.priceValue; }
@@ -99,13 +102,6 @@ export class Product {
   changePrice(price: number): void {
     this.validatePrice(price);
     this.priceValue = price;
-    this.touch();
-  }
-
-  changeImages(imageUrl: string, mobileImageUrl: string): void {
-    this.validateImages(imageUrl, mobileImageUrl);
-    this.imageUrlValue = imageUrl.trim();
-    this.mobileImageUrlValue = mobileImageUrl.trim();
     this.touch();
   }
 
@@ -140,12 +136,6 @@ export class Product {
     }
     if ([...name.trim()].length > 255) {
       throw new InvalidProductError('O nome do produto deve ter no máximo 255 caracteres.');
-    }
-  }
-
-  private validateImages(imageUrl: string, mobileImageUrl: string): void {
-    if (!imageUrl.trim() || !mobileImageUrl.trim()) {
-      throw new InvalidProductError('As imagens do produto não podem ser vazias.');
     }
   }
 
