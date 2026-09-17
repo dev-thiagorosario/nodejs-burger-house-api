@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { User } from '../../src/entities/user-entity.js';
 import { UserAlreadyExistsError } from '../../src/exception/user-already-exists-error.js';
-import { PostgresUserRepository } from '../../src/repository/postgres-user-repository.js';
+import { PostgresUserRepository } from '../../src/postgres-repository/postgres-user-repository.js';
 
 const user = new User({
   id: 'a76c2afe-5996-48ca-9262-e01e9b68bdee',

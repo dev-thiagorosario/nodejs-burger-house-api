@@ -9,7 +9,7 @@ import { databaseUrl, jwtSecret } from '../core/config.js';
 import { createPostgresPool } from '../database/data-source.js';
 import { BcryptHashProvider } from '../providers/bcrypt-hash-provider.js';
 import { JwtTokenProvider } from '../providers/jwt-token-provider.js';
-import { PostgresUserRepository } from '../repository/postgres-user-repository.js';
+import { PostgresUserRepository } from '../postgres-repository/postgres-user-repository.js';
 import { CreateUserUseCase } from '../use-case/create-user-use-case.js';
 import { GetCurrentUserUseCase } from '../use-case/get-current-user-use-case.js';
 import { LoginUseCase } from '../use-case/login-use-case.js';

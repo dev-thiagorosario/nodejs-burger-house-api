@@ -2,7 +2,7 @@ import type { Pool } from 'pg';
 
 import { User } from '../entities/user-entity.js';
 import { UserAlreadyExistsError } from '../exception/user-already-exists-error.js';
-import type { IUserRepository } from './i-user-repository.js';
+import type { IUserRepository } from '../repository/i-user-repository.js';
 
 interface UserRow {
   id: string;
@@ -42,7 +42,7 @@ function isEmailUniqueViolation(error: unknown): boolean {
 }
 
 export class PostgresUserRepository implements IUserRepository {
-  constructor(private readonly pool: Pool) {}
+  constructor(private readonly pool: Pool) { }
 
   async findById(id: string): Promise<User | null> {
     const result = await this.pool.query<UserRow>(
