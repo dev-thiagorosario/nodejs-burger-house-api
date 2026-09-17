@@ -1,3 +1,4 @@
+import type { ProductImage } from '../entities/product-image.js';
 import type { Pool } from 'pg';
 
 import { Product } from '../entities/product-entity.js';
@@ -9,8 +10,7 @@ interface ProductRow {
   id: string;
   title: string;
   description: string;
-  image: string;
-  mobile_image: string;
+  images: ProductImage[];
   image_alt: string | null;
   price: string;
   category_id: number;
@@ -19,15 +19,19 @@ interface ProductRow {
   updated_at: Date;
 }
 
-const columns = 'id, title, description, image, mobile_image, image_alt, price, category_id, is_active, created_at, updated_at';
+const columns = 'id, title, description, image_alt, price, category_id, is_active, created_at, updated_at';
+
+// The aggregate returns metadata in the same SQL statement, never the binary data.
+const imageColumns = `COALESCE((SELECT jsonb_agg(jsonb_build_object(
+  'variant', i.variant, 'fileName', i.file_name, 'mimeType', i.mime_type
+) ORDER BY i.variant) FROM product_images i WHERE i.product_id = products.id), '[]'::jsonb) AS images`;
 
 function toProduct(row: ProductRow): Product {
   return new Product({
     id: row.id,
     name: row.title,
     description: row.description,
-    imageUrl: row.image,
-    mobileImageUrl: row.mobile_image,
+    images: row.images ?? [],
     imageAlt: row.image_alt ?? '',
     price: Number(row.price),
     categoryId: row.category_id,
@@ -42,7 +46,7 @@ export class PostgresProductRepository implements IProductRepository {
 
   async findById(id: string): Promise<Product | null> {
     const result = await this.pool.query<ProductRow>(
-      `SELECT ${columns} FROM products WHERE id = $1 LIMIT 1`, [id],
+      `SELECT ${columns}, ${imageColumns} FROM products WHERE id = $1 LIMIT 1`, [id],
     );
     const row = result.rows[0];
     return row ? toProduct(row) : null;
@@ -50,14 +54,14 @@ export class PostgresProductRepository implements IProductRepository {
 
   async findAll(): Promise<Product[]> {
     const result = await this.pool.query<ProductRow>(
-      `SELECT ${columns} FROM products ORDER BY id`,
+      `SELECT ${columns}, ${imageColumns} FROM products ORDER BY id`,
     );
     return result.rows.map(toProduct);
   }
 
   async findByCategoryId(categoryId: number): Promise<Product[]> {
     const result = await this.pool.query<ProductRow>(
-      `SELECT ${columns} FROM products WHERE category_id = $1 ORDER BY id`, [categoryId],
+      `SELECT ${columns}, ${imageColumns} FROM products WHERE category_id = $1 ORDER BY id`, [categoryId],
     );
     return result.rows.map(toProduct);
   }
@@ -66,10 +70,9 @@ export class PostgresProductRepository implements IProductRepository {
     try {
       const result = await this.pool.query<ProductRow>(
         `INSERT INTO products (${columns})
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          RETURNING ${columns}`,
-        [product.id, product.name, product.description, product.imageUrl,
-          product.mobileImageUrl, product.imageAlt, product.price, product.categoryId,
+        [product.id, product.name, product.description, product.imageAlt, product.price, product.categoryId,
           product.isActive, product.createdAt, product.updatedAt],
       );
       const row = result.rows[0];
@@ -90,12 +93,10 @@ export class PostgresProductRepository implements IProductRepository {
 
   async update(product: Product): Promise<Product> {
     const result = await this.pool.query<ProductRow>(
-      `UPDATE products SET title = $2, description = $3, image = $4,
-         mobile_image = $5, image_alt = $6, price = $7, category_id = $8,
-         is_active = $9, updated_at = $10
-       WHERE id = $1 RETURNING ${columns}`,
-      [product.id, product.name, product.description, product.imageUrl,
-        product.mobileImageUrl, product.imageAlt, product.price, product.categoryId,
+      `UPDATE products SET title = $2, description = $3, image_alt = $4, price = $5, category_id = $6,
+         is_active = $7, updated_at = $8
+       WHERE id = $1 RETURNING ${columns}, ${imageColumns}`,
+      [product.id, product.name, product.description, product.imageAlt, product.price, product.categoryId,
         product.isActive, product.updatedAt],
     );
     const row = result.rows[0];
