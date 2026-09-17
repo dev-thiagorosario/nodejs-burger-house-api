@@ -18,7 +18,7 @@ describe('OrderItem', () => {
   it('preserves the commercial snapshot after product and input changes', () => {
     const product = new Product({
       id: props.productId, name: props.productName, price: props.unitPrice,
-      description: '', imageUrl: '', categoryId: 1,
+      description: '', imageUrl: '/images/classic.png', mobileImageUrl: '/images/classic-mobile.png', categoryId: 1,
       createdAt: new Date(), updatedAt: new Date(),
     });
     const input = { ...props, productName: product.name, unitPrice: product.price };

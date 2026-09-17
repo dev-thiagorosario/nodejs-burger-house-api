@@ -8,6 +8,7 @@ const props: ProductProps = {
   price: 25.9,
   categoryId: 1,
   imageUrl: '/images/classic.png',
+  mobileImageUrl: '/images/classic-mobile.png',
   createdAt: new Date('2026-09-01T12:00:00Z'),
   updatedAt: new Date('2026-09-01T12:00:00Z'),
 };
@@ -16,13 +17,20 @@ afterEach(() => vi.useRealTimers());
 
 describe('Product', () => {
   it('normalizes the name and starts active unless explicitly inactive', () => {
-    const product = new Product({ ...props, name: ' Classic Burger ' });
+    const product = new Product({
+      ...props, id: ' classic-burger ', name: ' Classic Burger ',
+      imageUrl: ` ${props.imageUrl} `, mobileImageUrl: ` ${props.mobileImageUrl} `,
+    });
+    expect(product.id).toBe('classic-burger');
     expect(product.name).toBe(props.name);
+    expect(product.imageUrl).toBe(props.imageUrl);
+    expect(product.mobileImageUrl).toBe(props.mobileImageUrl);
+    expect(product.imageAlt).toBe(props.name);
     expect(product.isActive).toBe(true);
     expect(new Product({ ...props, isActive: false }).isActive).toBe(false);
   });
 
-  it.each([-1, NaN, Infinity, -Infinity])('rejects invalid price %s without changing state', (price) => {
+  it.each([-1, NaN, Infinity, -Infinity, 1.001, 0.001, 1e-7, 100_000_000, 99_999_999.991])('rejects invalid price %s without changing state', (price) => {
     expect(() => new Product({ ...props, price })).toThrow(InvalidProductError);
     const product = new Product(props);
     expect(() => product.changePrice(price)).toThrow(InvalidProductError);
@@ -38,11 +46,63 @@ describe('Product', () => {
     expect(product.updatedAt).toEqual(props.updatedAt);
   });
 
-  it.each(['', '   '])('rejects blank names on creation and rename (%j)', (name) => {
+  it.each(['', '   ', 'a'.repeat(256)])('rejects invalid names on creation and rename (%j)', (name) => {
     expect(() => new Product({ ...props, name })).toThrow(InvalidProductError);
     const product = new Product(props);
     expect(() => product.rename(name)).toThrow(InvalidProductError);
     expect(product.name).toBe(props.name);
+    expect(product.updatedAt).toEqual(props.updatedAt);
+  });
+
+  it.each(['', ' ', 'Classic-burger', 'classic_burger', 'classic burger', '-burger', 'burger-', 'classic--burger', 'hambúrguer', 'a'.repeat(256)])('rejects invalid ID %j', (id) => {
+    expect(() => new Product({ ...props, id })).toThrow(InvalidProductError);
+  });
+
+  it('accepts the schema character limits after trimming', () => {
+    const product = new Product({ ...props, id: ` ${'a'.repeat(255)} `, name: ` ${'🍔'.repeat(255)} ` });
+    expect(product.id).toHaveLength(255);
+    expect(product.name).toBe('🍔'.repeat(255));
+    product.rename('a'.repeat(255));
+    expect(product.name).toHaveLength(255);
+  });
+
+  it.each([0, 0.01, 0.29, 1.1, 25.9, 99_999_999.99])('accepts valid price %s on creation and change', (price) => {
+    expect(new Product({ ...props, price }).price).toBe(price);
+    const product = new Product(props);
+    product.changePrice(price);
+    expect(product.price).toBe(price);
+  });
+
+  it.each([undefined, '', '   '])('uses the name for missing or blank imageAlt (%j)', (imageAlt) => {
+    const input = imageAlt === undefined ? props : { ...props, imageAlt };
+    expect(new Product(input).imageAlt).toBe(props.name);
+  });
+
+  it('normalizes alternative text and falls back to the current name when cleared', () => {
+    const product = new Product({ ...props, imageAlt: ' Foto do produto ' });
+    expect(product.imageAlt).toBe('Foto do produto');
+    product.changeImageAlt(' Outra foto ');
+    expect(product.imageAlt).toBe('Outra foto');
+    product.rename('Novo nome');
+    expect(product.imageAlt).toBe('Outra foto');
+    product.changeImageAlt('   ');
+    expect(product.imageAlt).toBe('Novo nome');
+    product.changeImageAlt('');
+    expect(product.imageAlt).toBe('Novo nome');
+  });
+
+  it.each([
+    ['', '/images/new-mobile.png'],
+    ['   ', '/images/new-mobile.png'],
+    ['/images/new.png', ''],
+    ['/images/new.png', '   '],
+  ])('rejects invalid images (%j, %j) without partial changes', (imageUrl, mobileImageUrl) => {
+    expect(() => new Product({ ...props, imageUrl, mobileImageUrl })).toThrow(InvalidProductError);
+    const product = new Product(props);
+    expect(() => product.changeImages(imageUrl, mobileImageUrl)).toThrow(InvalidProductError);
+    expect(product.imageUrl).toBe(props.imageUrl);
+    expect(product.mobileImageUrl).toBe(props.mobileImageUrl);
+    expect(product.imageAlt).toBe(props.name);
     expect(product.updatedAt).toEqual(props.updatedAt);
   });
 
@@ -56,6 +116,8 @@ describe('Product', () => {
       () => product.changePrice(0),
       () => product.changeDescription(''),
       () => product.changeCategory(2),
+      () => product.changeImages(' /images/new.png ', ' /images/new-mobile.png '),
+      () => product.changeImageAlt(' Nova foto '),
       () => product.deactivate(),
       () => product.activate(),
     ];
@@ -69,6 +131,9 @@ describe('Product', () => {
     expect(product.description).toBe('');
     expect(product.categoryId).toBe(2);
     expect(product.category.name).toBe('Porcoes');
+    expect(product.imageUrl).toBe('/images/new.png');
+    expect(product.mobileImageUrl).toBe('/images/new-mobile.png');
+    expect(product.imageAlt).toBe('Nova foto');
     expect(product.isActive).toBe(true);
     product.deactivate();
     expect(product.isActive).toBe(false);
