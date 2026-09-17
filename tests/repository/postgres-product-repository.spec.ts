@@ -7,13 +7,13 @@ import { PostgresProductRepository } from '../../src/postgres-repository/postgre
 
 const row = {
   id: 'classic-burger', title: 'Classic Burger', description: 'Carne e queijo',
-  image: '/desktop.png', mobile_image: '/mobile.png', image_alt: 'Foto do burger',
+  images: [{ variant: 'desktop' as const, fileName: 'photo.png', mimeType: 'image/png' }], image_alt: 'Foto do burger',
   price: '25.90', category_id: 1, is_active: false,
   created_at: new Date('2026-09-01T12:00:00Z'), updated_at: new Date('2026-09-10T12:00:00Z'),
 };
 const product = new Product({
   id: row.id, name: row.title, description: row.description,
-  imageUrl: row.image, mobileImageUrl: row.mobile_image, imageAlt: row.image_alt,
+  images: row.images, imageAlt: row.image_alt,
   price: 25.9, categoryId: row.category_id, isActive: row.is_active,
   createdAt: row.created_at, updatedAt: row.updated_at,
 });
@@ -51,7 +51,7 @@ describe('PostgresProductRepository', () => {
     const { query, repository } = setup();
     expect(await repository.create(product)).toEqual(product);
     expect(query).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO products'), [
-      row.id, row.title, row.description, row.image, row.mobile_image, row.image_alt,
+      row.id, row.title, row.description, row.image_alt,
       25.9, row.category_id, false, row.created_at, row.updated_at,
     ]);
   });
@@ -60,11 +60,11 @@ describe('PostgresProductRepository', () => {
     const { query, repository } = setup();
     expect(await repository.update(product)).toEqual(product);
     expect(query).toHaveBeenCalledWith(expect.stringContaining('UPDATE products SET'), [
-      row.id, row.title, row.description, row.image, row.mobile_image, row.image_alt,
+      row.id, row.title, row.description, row.image_alt,
       25.9, row.category_id, false, row.updated_at,
     ]);
     const sql = query.mock.calls[0]?.[0];
-    expect(sql).toContain('is_active = $9');
+    expect(sql).toContain('is_active = $7');
     expect(sql).toContain('WHERE id = $1');
     expect(sql).not.toContain('created_at =');
     expect(sql).not.toContain('DELETE');

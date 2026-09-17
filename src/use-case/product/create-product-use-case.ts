@@ -3,7 +3,7 @@ import { ProductAlreadyExistsError } from '../../exception/product-already-exist
 import type { IProductRepository } from '../../repository/i-product-repository.js';
 import { toProductOutput, type ProductOutput } from './product-output.js';
 
-export type CreateProductInput = Omit<ProductProps, 'createdAt' | 'updatedAt'>;
+export type CreateProductInput = Omit<ProductProps, 'createdAt' | 'updatedAt' | 'images'>;
 
 export class CreateProductUseCase {
   constructor(private readonly productRepository: IProductRepository) {}

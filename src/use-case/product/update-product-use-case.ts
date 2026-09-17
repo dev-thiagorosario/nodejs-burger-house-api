@@ -3,7 +3,7 @@ import { ProductNotFoundError } from '../../exception/product-not-found-error.js
 import type { IProductRepository } from '../../repository/i-product-repository.js';
 import { toProductOutput, type ProductOutput } from './product-output.js';
 
-export type UpdateProductInput = { id: string } & Partial<Omit<ProductProps, 'id' | 'createdAt' | 'updatedAt'>>;
+export type UpdateProductInput = { id: string } & Partial<Omit<ProductProps, 'id' | 'createdAt' | 'updatedAt' | 'images'>>;
 
 export class UpdateProductUseCase {
   constructor(private readonly productRepository: IProductRepository) {}
@@ -20,9 +20,6 @@ export class UpdateProductUseCase {
     if (input.description !== undefined) product.changeDescription(input.description);
     if (input.price !== undefined) product.changePrice(input.price);
     if (input.categoryId !== undefined) product.changeCategory(input.categoryId);
-    if (input.imageUrl !== undefined || input.mobileImageUrl !== undefined) {
-      product.changeImages(input.imageUrl ?? product.imageUrl, input.mobileImageUrl ?? product.mobileImageUrl);
-    }
     if (input.imageAlt !== undefined) product.changeImageAlt(input.imageAlt);
     if (input.isActive === true) product.activate();
     if (input.isActive === false) product.deactivate();

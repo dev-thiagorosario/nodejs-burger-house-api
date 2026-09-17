@@ -28,6 +28,7 @@ async function seedOrders(): Promise<void> {
 
   try {
     await client.query('BEGIN');
+    await client.query("SELECT pg_advisory_xact_lock(hashtext('burger-house-orders-seeder'))");
     const userResult = await client.query<{ id: string }>(
       'SELECT id FROM users WHERE email = $1', ['thiago@email.com'],
     );
@@ -37,6 +38,13 @@ async function seedOrders(): Promise<void> {
     }
 
     for (const order of orders) {
+      const existing = await client.query(
+        'SELECT id FROM orders WHERE user_id = $1 AND ordered_at = $2 LIMIT 1',
+        [user.id, order.orderedAt],
+      );
+      if (existing.rows.length > 0) {
+        continue;
+      }
       const statusResult = await client.query<{ id: number }>(
         'SELECT id FROM order_statuses WHERE name = $1', [order.status],
       );
@@ -65,7 +73,7 @@ async function seedOrders(): Promise<void> {
     }
 
     await client.query('COMMIT');
-    console.log(`${orders.length} pedidos criados com sucesso.`);
+    console.log('Pedidos de exemplo populados; pedidos existentes foram preservados.');
   } catch (error: unknown) {
     await client.query('ROLLBACK');
     throw error;

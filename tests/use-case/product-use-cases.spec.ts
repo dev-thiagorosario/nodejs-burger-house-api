@@ -12,7 +12,7 @@ import { InvalidProductCategoryError } from '../../src/value-object/product-cate
 
 const input = {
   id: 'classic-burger', name: 'Classic Burger', description: 'Carne e queijo',
-  price: 25.9, categoryId: 1, imageUrl: '/desktop.png', mobileImageUrl: '/mobile.png',
+  price: 25.9, categoryId: 1,
 };
 const date = new Date('2026-09-01T12:00:00Z');
 function product() {
@@ -35,7 +35,7 @@ describe('Product use cases', () => {
     vi.setSystemTime(date);
     const repo = repository();
     const result = await new CreateProductUseCase(repo).execute({ ...input, id: ' classic-burger ' });
-    expect(result).toEqual({ ...input, imageAlt: input.name, isActive: true, createdAt: date, updatedAt: date });
+    expect(result).toEqual({ ...input, images: [], imageAlt: input.name, isActive: true, createdAt: date, updatedAt: date });
     expect(repo.findById).toHaveBeenCalledWith(input.id);
     expect(repo.create).toHaveBeenCalledWith(expect.any(Product));
     expect(result).not.toBeInstanceOf(Product);
@@ -87,20 +87,23 @@ describe('Product use cases', () => {
     const repo = repository(product());
     const result = await new UpdateProductUseCase(repo).execute({
       id: ' classic-burger ', name: ' Novo nome ', description: '', price: 0,
-      categoryId: 2, imageUrl: ' /new.png ', mobileImageUrl: ' /new-mobile.png ',
+      categoryId: 2,
       imageAlt: '', isActive: false,
     });
     expect(result).toEqual({
       id: input.id, name: 'Novo nome', description: '', price: 0, categoryId: 2,
-      imageUrl: '/new.png', mobileImageUrl: '/new-mobile.png', imageAlt: 'Novo nome',
+      images: [], imageAlt: 'Novo nome',
       isActive: false, createdAt: date, updatedAt: now,
     });
     expect(repo.update).toHaveBeenCalledOnce();
   });
 
-  it.each(['imageUrl', 'mobileImageUrl'] as const)('updates only %s while preserving omitted fields', async (field) => {
-    const result = await new UpdateProductUseCase(repository(product())).execute({ id: input.id, [field]: '/new.png' });
-    expect(result).toMatchObject({ ...input, [field]: '/new.png' });
+  it('preserves loaded image metadata when updating a product', async () => {
+    const existing = new Product({ ...input, createdAt: date, updatedAt: date,
+      images: [{ variant: 'mobile', fileName: 'photo.png', mimeType: 'image/png' }] });
+    const result = await new UpdateProductUseCase(repository(existing)).execute({ id: input.id, price: 10 });
+    expect(result.images).toEqual([{ variant: 'mobile', fileName: 'photo.png', mimeType: 'image/png',
+      url: '/products/classic-burger/images/mobile' }]);
   });
 
   it('preserves the loaded entity and avoids persistence after a later validation failure', async () => {
