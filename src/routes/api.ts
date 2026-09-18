@@ -27,6 +27,9 @@ import { UpdateProductController } from '../Http/controller/product/update-produ
 import { UpdateProductUseCase } from '../use-case/product/update-product-use-case.js';
 import { DeleteProductController } from '../Http/controller/product/delete-product-controller.js';
 import { DeleteProductUseCase } from '../use-case/product/delete-product-use-case.js';
+import { PostgresCategoryRepository } from '../postgres-repository/postgres-category-repository.js';
+import { ListCategoriesUseCase } from '../use-case/category/list-categories-use-case.js';
+import { ListCategoriesController } from '../Http/controller/category/list-categories-controller.js';
 
 const pool = createPostgresPool(databaseUrl);
 const userRepository = new PostgresUserRepository(pool);
@@ -57,6 +60,10 @@ const updateProductController = new UpdateProductController(updateProductUseCase
 const deleteProductUseCase = new DeleteProductUseCase(productRepository);
 const deleteProductController = new DeleteProductController(deleteProductUseCase);
 
+const categoryRepository = new PostgresCategoryRepository(pool);
+const listCategoriesUseCase = new ListCategoriesUseCase(categoryRepository);
+const listCategoriesController = new ListCategoriesController(listCategoriesUseCase);
+
 const router = Router();
 router.use(productImagesRouter(pool));
 
@@ -70,6 +77,7 @@ router.post('/register', createUserController.handle);
 router.post('/register-product', createProductController.handle);
 router.get('/list-product/:id', getProductByIdController.handle);
 router.get('/list-products', listProductsController.handle);
+router.get('/list-categories', listCategoriesController.handle);
 router.patch('/update-products/:id', updateProductController.handle);
 router.delete('/delete-products/:id', deleteProductController.handle);
 
