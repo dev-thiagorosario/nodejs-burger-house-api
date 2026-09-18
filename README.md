@@ -171,6 +171,7 @@ são aceitos nos corpos de criação/atualização: envie os bytes pela rota de 
 Os antigos inputs `imageUrl` e `mobileImageUrl` agora retornam 400.
 
 - `GET /list-products`, com filtro opcional `?categoryId=1`.
+- `GET /list-categories`, retorna `{ success: true, data: { categories: [{ id, name }] } }` para o dropdown, ordenado por ID.
 - `GET /list-product/:id`.
 - `PATCH /update-products/:id`, com os campos de produto a modificar.
 - `DELETE /delete-products/:id` (204): desativa o produto e preserva suas imagens
