@@ -3,10 +3,10 @@ import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { LogoutController } from '../../src/Http/controller/logout-controller.js';
+import { LogoutController } from '../../src/Http/controller/auth/logout-controller.js';
 import { setAuthCookie } from '../../src/Http/helper/auth-cookie.js';
 import { AuthMiddleware } from '../../src/Http/middleware/auth-middleware.js';
-import { LogoutUseCase } from '../../src/use-case/logout-use-case.js';
+import { LogoutUseCase } from '../../src/use-case/auth/logout-use-case.js';
 
 function createApp() {
   const app = express();

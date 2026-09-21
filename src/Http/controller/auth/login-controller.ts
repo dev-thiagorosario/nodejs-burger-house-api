@@ -1,9 +1,9 @@
 import type { NextFunction, Request, Response } from 'express';
 import { z } from 'zod';
 
-import { InvalidCredentialsError } from '../../exception/invalid-credentials-error.js';
-import type { LoginUseCase } from '../../use-case/login-use-case.js';
-import { setAuthCookie } from '../helper/auth-cookie.js';
+import { InvalidCredentialsError } from '../../../exception/invalid-credentials-error.js';
+import type { LoginUseCase } from '../../../use-case/auth/login-use-case.js';
+import { setAuthCookie } from '../../helper/auth-cookie.js';
 
 const loginBodySchema = z.object({
   email: z
