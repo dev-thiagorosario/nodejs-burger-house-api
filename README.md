@@ -118,6 +118,92 @@ No frontend, envie a requisição com `credentials: 'include'` para que o navega
 processe o cookie quando a API estiver em outra origem. O logout remove o cookie,
 mas não revoga cópias do JWT, que permanecem válidas até a expiração.
 
+## Criação de pedidos
+
+`POST /create-order`
+
+Chame esta rota quando o cliente finalizar o carrinho. Exige o cookie
+`access_token` obtido no login; no frontend, use `credentials: 'include'`.
+Envie somente os identificadores e as quantidades dos produtos, no mesmo formato
+de `POST /cart/summary`:
+
+```json
+{
+  "items": [
+    { "productId": "classic-burger", "quantity": 2 }
+  ]
+}
+```
+
+O usuário é identificado pela sessão. A API consulta os nomes, preços e
+disponibilidade dos produtos no banco no momento da finalização e cria o pedido
+com o status inicial `pending` (pendente). Os nomes e preços são preservados nos
+itens do pedido. Produtos repetidos são agrupados, somando suas quantidades.
+O pedido e todos os seus itens são gravados na mesma transação: uma falha desfaz
+toda a criação. Os IDs do pedido e dos itens são gerados pelo banco.
+
+Retorna `201 Created`:
+
+```json
+{
+  "success": true,
+  "message": "Pedido criado com sucesso.",
+  "data": {
+    "order": {
+      "id": 6,
+      "userId": "a76c2afe-5996-48ca-9262-e01e9b68bdee",
+      "status": "pending",
+      "items": [
+        {
+          "id": 10,
+          "productId": "classic-burger",
+          "name": "Classic Burger",
+          "unitPrice": 25.9,
+          "quantity": 2,
+          "subtotal": 51.8
+        }
+      ],
+      "totalItems": 2,
+      "total": 51.8,
+      "createdAt": "2026-09-21T12:00:00.000Z",
+      "updatedAt": "2026-09-21T12:00:00.000Z"
+    }
+  }
+}
+```
+
+Carrinho vazio, quantidades inválidas e campos extras como `userId`, `status`,
+`statusId`, preços ou totais retornam `400 Bad Request`. A quantidade acumulada
+por produto deve ser um inteiro entre 1 e 2.147.483.647, e o total deve respeitar
+o limite numérico do resumo do carrinho. Sessão ausente, inválida ou expirada
+retorna `401 Unauthorized`; usuário ou produto inexistente retorna `404 Not Found`;
+produto inativo retorna `409 Conflict`.
+
+## Dropdown de status dos pedidos
+
+`GET /list-order-statuses`
+
+Retorna `200 OK` com os registros de `order_statuses`, ordenados por ID, para
+preencher o dropdown. A lista é consultada no banco a cada requisição. Exemplo
+com os dados do seeder:
+
+```json
+{
+  "success": true,
+  "data": {
+    "statuses": [
+      { "id": 1, "name": "pending" },
+      { "id": 2, "name": "pickedUp" },
+      { "id": 3, "name": "cancelled" }
+    ]
+  }
+}
+```
+
+A listagem é pública, seguindo o dropdown de categorias, e retorna `statuses: []`
+se não houver registros. O status `pending` precisa existir para criar pedidos;
+ele já é cadastrado por `npm run db:seed` ou `npm run db:seed:order-statuses`.
+
 ## Desenvolvimento local
 
 Com o PostgreSQL configurado em `DATABASE_URL`:
