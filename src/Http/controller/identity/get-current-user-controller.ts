@@ -1,11 +1,11 @@
 import type { NextFunction, Request, Response } from 'express';
 
-import { UserNotFoundError } from '../../exception/user-not-found-error.js';
-import type { GetCurrentUserUseCase } from '../../use-case/get-current-user-use-case.js';
-import { getCurrentUserRequestSchema } from '../request/get-current-user-request.js';
+import { UserNotFoundError } from '../../../exception/user-not-found-error.js';
+import type { GetCurrentUserUseCase } from '../../../use-case/identity/get-current-user-use-case.js';
+import { getCurrentUserRequestSchema } from '../../request/identity/get-current-user-request.js';
 
 export class GetCurrentUserController {
-  constructor(private readonly getCurrentUserUseCase: GetCurrentUserUseCase) {}
+  constructor(private readonly getCurrentUserUseCase: GetCurrentUserUseCase) { }
 
   handle = async (
     _request: Request,

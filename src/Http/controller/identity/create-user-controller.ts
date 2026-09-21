@@ -1,13 +1,13 @@
 import type { NextFunction, Request, Response } from 'express';
 
-import { InvalidUserError } from '../../entities/user-entity.js';
-import { UserAlreadyExistsError } from '../../exception/user-already-exists-error.js';
-import { InvalidPasswordError } from '../../policy/password-policy.js';
-import type { CreateUserUseCase } from '../../use-case/create-user-use-case.js';
-import { createUserBodySchema } from '../request/create-user-request.js';
+import { InvalidUserError } from '../../../entities/user-entity.js';
+import { UserAlreadyExistsError } from '../../../exception/user-already-exists-error.js';
+import { InvalidPasswordError } from '../../../policy/password-policy.js';
+import type { CreateUserUseCase } from '../../../use-case/identity/create-user-use-case.js';
+import { createUserBodySchema } from '../../request/identity/create-user-request.js';
 
 export class CreateUserController {
-  constructor(private readonly createUserUseCase: CreateUserUseCase) {}
+  constructor(private readonly createUserUseCase: CreateUserUseCase) { }
 
   handle = async (
     request: Request,

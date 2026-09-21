@@ -2,11 +2,11 @@ import express from 'express';
 import request from 'supertest';
 import { describe, expect, it, vi } from 'vitest';
 
-import { CreateUserController } from '../../src/Http/controller/create-user-controller.js';
+import { CreateUserController } from '../../src/Http/controller/identity/create-user-controller.js';
 import { User } from '../../src/entities/user-entity.js';
 import type { IHashProvider } from '../../src/providers/i-hash-provider.js';
 import type { IUserRepository } from '../../src/repository/i-user-repository.js';
-import { CreateUserUseCase } from '../../src/use-case/create-user-use-case.js';
+import { CreateUserUseCase } from '../../src/use-case/identity/create-user-use-case.js';
 
 function createApp(options: {
   userExists?: boolean;

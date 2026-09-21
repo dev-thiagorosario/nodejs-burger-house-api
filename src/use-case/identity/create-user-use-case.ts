@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
-import { User } from '../entities/user-entity.js';
-import { UserAlreadyExistsError } from '../exception/user-already-exists-error.js';
-import { PasswordPolicy } from '../policy/password-policy.js';
-import type { IHashProvider } from '../providers/i-hash-provider.js';
-import type { IUserRepository } from '../repository/i-user-repository.js';
+import { User } from '../../entities/user-entity.js';
+import { UserAlreadyExistsError } from '../../exception/user-already-exists-error.js';
+import { PasswordPolicy } from '../../policy/password-policy.js';
+import type { IHashProvider } from '../../providers/i-hash-provider.js';
+import type { IUserRepository } from '../../repository/i-user-repository.js';
 
 export interface CreateUserInput {
   fullName: string;
@@ -26,7 +26,7 @@ export class CreateUserUseCase {
   constructor(
     private readonly userRepository: IUserRepository,
     private readonly hashProvider: IHashProvider,
-  ) {}
+  ) { }
 
   async execute(input: CreateUserInput): Promise<CreateUserOutput> {
     const normalizedEmail = input.email.trim().toLowerCase();

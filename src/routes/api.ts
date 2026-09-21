@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { productImagesRouter } from './product-images.js';
 
-import { CreateUserController } from '../Http/controller/create-user-controller.js';
-import { GetCurrentUserController } from '../Http/controller/get-current-user-controller.js';
+import { CreateUserController } from '../Http/controller/identity/create-user-controller.js';
+import { GetCurrentUserController } from '../Http/controller/identity/get-current-user-controller.js';
 import { LoginController } from '../Http/controller/login-controller.js';
 import { LogoutController } from '../Http/controller/logout-controller.js';
 import { AuthMiddleware } from '../Http/middleware/auth-middleware.js';
@@ -11,8 +11,8 @@ import { createPostgresPool } from '../database/data-source.js';
 import { BcryptHashProvider } from '../providers/bcrypt-hash-provider.js';
 import { JwtTokenProvider } from '../providers/jwt-token-provider.js';
 import { PostgresUserRepository } from '../postgres-repository/postgres-user-repository.js';
-import { CreateUserUseCase } from '../use-case/create-user-use-case.js';
-import { GetCurrentUserUseCase } from '../use-case/get-current-user-use-case.js';
+import { CreateUserUseCase } from '../use-case/identity/create-user-use-case.js';
+import { GetCurrentUserUseCase } from '../use-case/identity/get-current-user-use-case.js';
 import { LoginUseCase } from '../use-case/login-use-case.js';
 import { LogoutUseCase } from '../use-case/logout-use-case.js';
 
