@@ -10,10 +10,19 @@ export interface IOrderCreator {
   create(data: CreateOrderData): Promise<Order>;
 }
 
+export interface OrderDetails {
+  order: Order;
+  user: { id: string; fullName: string };
+}
+
+export interface IOrderStatusWriter {
+  updateStatus(id: number, statusId: number): Promise<OrderDetails>;
+}
+
 export interface IOrderReader {
   findById(id: number): Promise<Order | null>;
-  findAll(): Promise<Order[]>;
-  findByUserId(userId: string): Promise<Order[]>;
+  findAll(): Promise<OrderDetails[]>;
+  findByUserId(userId: string): Promise<OrderDetails[]>;
 }
 
 export interface IOrderWriter extends IOrderCreator {

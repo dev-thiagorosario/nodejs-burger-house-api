@@ -15,6 +15,8 @@ const data: CreateOrderData = {
 const orderRow = {
   id: 82,
   user_id: data.userId,
+  full_name: 'Cliente Teste',
+  picked_up_at: null,
   created_at: new Date('2026-09-21T12:00:00Z'),
   updated_at: new Date('2026-09-21T12:00:00Z'),
 };
@@ -47,11 +49,11 @@ describe('PostgresOrderRepository listing', () => {
       { ...orderRow, id: 81, status: 'cancelled', ...firstItem, item_id: 301 },
     ] });
     const orders = await new PostgresOrderRepository({ query } as unknown as Pool).findAll();
-    expect(orders.map(order => order.id)).toEqual([82, 81]);
-    expect(orders.map(order => order.status)).toEqual(['pickedUp', 'cancelled']);
-    expect(orders[0]?.items).toHaveLength(2);
-    expect(orders[0]?.items[0]?.productName).toBe('Nome histórico');
-    expect(orders[0]?.total).toBe(66.7);
+    expect(orders.map(({ order }) => order.id)).toEqual([82, 81]);
+    expect(orders.map(({ order }) => order.status)).toEqual(['pickedUp', 'cancelled']);
+    expect(orders[0]?.order.items).toHaveLength(2);
+    expect(orders[0]?.order.items[0]?.productName).toBe('Nome histórico');
+    expect(orders[0]?.order.total).toBe(66.7);
     expect(query).toHaveBeenCalledExactlyOnceWith(expect.stringContaining('ORDER BY o.created_at DESC, o.id DESC, i.id ASC'), []);
     expect(query.mock.calls[0]?.[0]).toContain('JOIN order_statuses');
     expect(query.mock.calls[0]?.[0]).not.toContain('JOIN products');
@@ -68,8 +70,8 @@ describe('PostgresOrderRepository listing', () => {
     const query = vi.fn().mockResolvedValue({ rows: [{ ...orderRow, status: 'pending', item_id: null }] });
     const orders = await new PostgresOrderRepository({ query } as unknown as Pool).findAll();
     expect(orders).toHaveLength(1);
-    expect(orders[0]?.items).toEqual([]);
-    expect(orders[0]?.total).toBe(0);
+    expect(orders[0]?.order.items).toEqual([]);
+    expect(orders[0]?.order.total).toBe(0);
   });
 
   it('returns an empty list and propagates database errors', async () => {

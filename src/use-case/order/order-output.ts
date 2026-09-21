@@ -1,4 +1,5 @@
 import type { Order, OrderStatus } from '../../entities/order-entity.js';
+import type { OrderDetails } from '../../repository/i-order-repository.js';
 
 export interface OrderOutput {
   id: number;
@@ -16,6 +17,7 @@ export interface OrderOutput {
   total: number;
   createdAt: Date;
   updatedAt: Date;
+  pickedUpAt: Date | null;
 }
 
 export function toOrderOutput(order: Order): OrderOutput {
@@ -36,5 +38,14 @@ export function toOrderOutput(order: Order): OrderOutput {
     total: order.total,
     createdAt: order.createdAt,
     updatedAt: order.updatedAt,
+    pickedUpAt: order.pickedUpAt,
   };
+}
+
+export interface OrderDetailsOutput extends OrderOutput {
+  user: { id: string; fullName: string };
+}
+
+export function toOrderDetailsOutput(details: OrderDetails): OrderDetailsOutput {
+  return { ...toOrderOutput(details.order), user: { ...details.user } };
 }

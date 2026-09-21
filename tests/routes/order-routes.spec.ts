@@ -6,13 +6,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Order } from '../../src/entities/order-entity.js';
 import { Product, type ProductProps } from '../../src/entities/product-entity.js';
 import { User } from '../../src/entities/user-entity.js';
+import { InvalidOrderError } from '../../src/entities/order-entity.js';
+import { OrderNotFoundError } from '../../src/exception/order-not-found-error.js';
+import { InvalidOrderStatusError } from '../../src/value-object/order-status-value-object.js';
 import { JwtTokenProvider } from '../../src/providers/jwt-token-provider.js';
 import type { CreateOrderData } from '../../src/repository/i-order-repository.js';
 import apiRouter from '../../src/routes/api.js';
 
 const repositories = vi.hoisted(() => ({
   findUserById: vi.fn(), findProductsByIds: vi.fn(), createOrder: vi.fn(),
-  findAllOrders: vi.fn(), findOrdersByUserId: vi.fn(),
+  findAllOrders: vi.fn(), findOrdersByUserId: vi.fn(), updateOrderStatus: vi.fn(),
 }));
 const pool = vi.hoisted(() => ({ query: vi.fn(), end: vi.fn() }));
 
@@ -27,6 +30,7 @@ vi.mock('../../src/postgres-repository/postgres-product-repository.js', () => ({
 vi.mock('../../src/postgres-repository/postgres-order-repository.js', () => ({
   PostgresOrderRepository: class {
     create = repositories.createOrder;
+    updateStatus = repositories.updateOrderStatus;
     findAll = repositories.findAllOrders;
     findByUserId = repositories.findOrdersByUserId;
   },
@@ -83,7 +87,7 @@ describe('POST /create-order', () => {
         order: {
           id: 42, userId, status: 'pending',
           items: [{ id: 101, productId: item.productId, name: 'Duplo da Casa', unitPrice: 29.9, quantity: 2, subtotal: 59.8 }],
-          totalItems: 2, total: 59.8, createdAt: date.toISOString(), updatedAt: updatedAt.toISOString(),
+          pickedUpAt: null, totalItems: 2, total: 59.8, createdAt: date.toISOString(), updatedAt: updatedAt.toISOString(),
         },
       },
     });
@@ -279,6 +283,74 @@ describe('GET /list-order-statuses', () => {
   });
 });
 
+describe('PATCH /update-order-status/:id', () => {
+  const pickup = new Date('2026-09-02T12:00:00Z');
+  const details = {
+    user: { id: userId, fullName: 'Cliente Teste' },
+    order: new Order({ id: 42, userId, status: 'pickedUp', pickedUpAt: pickup,
+      createdAt: date, updatedAt: pickup,
+      items: [{ id: 101, productId: item.productId, productName: 'Burger', unitPrice: 20, quantity: 2 }],
+    }),
+  };
+
+  beforeEach(() => {
+    repositories.findUserById.mockResolvedValue({ id: userId, isAdmin: true });
+    repositories.updateOrderStatus.mockResolvedValue(details);
+  });
+
+  it('updates using the dropdown ID and returns customer and pickup time', async () => {
+    const response = await request(app).patch('/update-order-status/42').set('Cookie', authCookie).send({ statusId: 17 });
+    expect(response.status).toBe(200);
+    expect(repositories.updateOrderStatus).toHaveBeenCalledExactlyOnceWith(42, 17);
+    expect(response.body.data.order).toMatchObject({ id: 42, status: 'pickedUp',
+      pickedUpAt: pickup.toISOString(), user: details.user, total: 40,
+    });
+  });
+
+  it('requires authentication', async () => {
+    const response = await request(app).patch('/update-order-status/42').send({ statusId: 17 });
+    expect(response.status).toBe(401);
+    expect(repositories.updateOrderStatus).not.toHaveBeenCalled();
+  });
+
+  it('denies customer updates, even for their own orders', async () => {
+    repositories.findUserById.mockResolvedValue({ id: userId, isAdmin: false });
+    const response = await request(app).patch('/update-order-status/42').set('Cookie', authCookie).send({ statusId: 17 });
+    expect(response.status).toBe(403);
+    expect(repositories.updateOrderStatus).not.toHaveBeenCalled();
+  });
+
+  it.each([{}, { statusId: '2' }, { statusId: 0 }, { statusId: 1.5 }, { statusId: 32768 },
+    { statusId: 2, pickedUpAt: '2026-01-01' }, { statusId: 2, isAdmin: true }, { status: 'pickedUp' },
+  ])('rejects invalid or client-controlled fields: %j', async body => {
+    const response = await request(app).patch('/update-order-status/42').set('Cookie', authCookie).send(body);
+    expect(response.status).toBe(400);
+    expect(repositories.updateOrderStatus).not.toHaveBeenCalled();
+  });
+
+  it.each(['abc', '0', '-1', '1.5', '2147483648'])('rejects invalid order ID %s', async id => {
+    const response = await request(app).patch(`/update-order-status/${id}`).set('Cookie', authCookie).send({ statusId: 2 });
+    expect(response.status).toBe(400);
+    expect(repositories.updateOrderStatus).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [new OrderNotFoundError(), 404], [new InvalidOrderStatusError(), 400],
+    [new InvalidOrderError('Transição inválida.'), 409], [new Error('database failed'), 500],
+  ])('maps repository failure to HTTP %s %s', async (error, status) => {
+    repositories.updateOrderStatus.mockRejectedValue(error);
+    const response = await request(app).patch('/update-order-status/42').set('Cookie', authCookie).send({ statusId: 2 });
+    expect(response.status).toBe(status);
+  });
+
+  it('lists persisted pickup time separately from the last update', async () => {
+    repositories.findAllOrders.mockResolvedValue([details]);
+    const response = await request(app).get('/list-orders').set('Cookie', authCookie);
+    expect(response.status).toBe(200);
+    expect(response.body.data.orders[0]).toMatchObject({ user: details.user, pickedUpAt: pickup.toISOString() });
+  });
+});
+
 describe('GET /list-orders', () => {
   const savedOrder = new Order({
     id: 42, userId, status: 'cancelled', createdAt: date, updatedAt,
@@ -286,13 +358,13 @@ describe('GET /list-orders', () => {
   });
 
   it('lists only the authenticated customer orders with saved items, status and totals', async () => {
-    repositories.findOrdersByUserId.mockResolvedValue([savedOrder]);
+    repositories.findOrdersByUserId.mockResolvedValue([{ order: savedOrder, user: { id: userId, fullName: 'Cliente Teste' } }]);
     const response = await request(app).get('/list-orders').set('Cookie', authCookie);
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ success: true, data: { orders: [{
       id: 42, userId, status: 'cancelled', createdAt: date.toISOString(), updatedAt: updatedAt.toISOString(),
       items: [{ id: 101, productId: item.productId, name: 'Nome na compra', quantity: 2, unitPrice: 20.1, subtotal: 40.2 }],
-      totalItems: 2, total: 40.2,
+      totalItems: 2, total: 40.2, pickedUpAt: null, user: { id: userId, fullName: 'Cliente Teste' },
     }] } });
     expect(repositories.findOrdersByUserId).toHaveBeenCalledExactlyOnceWith(userId);
     expect(repositories.findAllOrders).not.toHaveBeenCalled();
@@ -302,7 +374,7 @@ describe('GET /list-orders', () => {
 
   it('uses the database administrator flag to list all orders', async () => {
     repositories.findUserById.mockResolvedValue({ id: userId, isAdmin: true });
-    repositories.findAllOrders.mockResolvedValue([savedOrder]);
+    repositories.findAllOrders.mockResolvedValue([{ order: savedOrder, user: { id: userId, fullName: 'Cliente Teste' } }]);
     const response = await request(app).get('/list-orders').set('Cookie', authCookie);
     expect(response.status).toBe(200);
     expect(response.body.data.orders).toHaveLength(1);
