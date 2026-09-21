@@ -38,6 +38,8 @@ import { PostgresOrderRepository } from '../postgres-repository/postgres-order-r
 import { PostgresOrderStatusRepository } from '../postgres-repository/postgres-order-status-repository.js';
 import { CreateOrderUseCase } from '../use-case/order/create-order-use-case.js';
 import { ListOrderStatusesUseCase } from '../use-case/order/list-order-statuses-use-case.js';
+import { ListOrdersUseCase } from '../use-case/order/list-orders-use-case.js';
+import { ListOrdersController } from '../Http/controller/order/list-orders-controller.js';
 
 const pool = createPostgresPool(databaseUrl);
 const userRepository = new PostgresUserRepository(pool);
@@ -77,6 +79,7 @@ const listCategoriesController = new ListCategoriesController(listCategoriesUseC
 const orderRepository = new PostgresOrderRepository(pool);
 const createOrderUseCase = new CreateOrderUseCase(orderRepository, productRepository, userRepository);
 const createOrderController = new CreateOrderController(createOrderUseCase);
+const listOrdersController = new ListOrdersController(new ListOrdersUseCase(orderRepository, userRepository));
 const orderStatusRepository = new PostgresOrderStatusRepository(pool);
 const listOrderStatusesUseCase = new ListOrderStatusesUseCase(orderStatusRepository);
 const listOrderStatusesController = new ListOrderStatusesController(listOrderStatusesUseCase);
@@ -99,6 +102,7 @@ router.patch('/update-products/:id', updateProductController.handle);
 router.delete('/delete-products/:id', deleteProductController.handle);
 router.post('/cart/summary', cartSummaryController.handle);
 router.post('/create-order', authMiddleware.handle, createOrderController.handle);
+router.get('/list-orders', authMiddleware.handle, listOrdersController.handle);
 router.get('/list-order-statuses', listOrderStatusesController.handle);
 
 export function closeApiDependencies(): Promise<void> {

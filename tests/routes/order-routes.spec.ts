@@ -12,6 +12,7 @@ import apiRouter from '../../src/routes/api.js';
 
 const repositories = vi.hoisted(() => ({
   findUserById: vi.fn(), findProductsByIds: vi.fn(), createOrder: vi.fn(),
+  findAllOrders: vi.fn(), findOrdersByUserId: vi.fn(),
 }));
 const pool = vi.hoisted(() => ({ query: vi.fn(), end: vi.fn() }));
 
@@ -24,7 +25,11 @@ vi.mock('../../src/postgres-repository/postgres-product-repository.js', () => ({
   PostgresProductRepository: class { findByIds = repositories.findProductsByIds; },
 }));
 vi.mock('../../src/postgres-repository/postgres-order-repository.js', () => ({
-  PostgresOrderRepository: class { create = repositories.createOrder; },
+  PostgresOrderRepository: class {
+    create = repositories.createOrder;
+    findAll = repositories.findAllOrders;
+    findByUserId = repositories.findOrdersByUserId;
+  },
 }));
 
 const app = express();
@@ -269,6 +274,77 @@ describe('GET /list-order-statuses', () => {
 
     const response = await request(app).get('/list-order-statuses');
 
+    expect(response.status).toBe(500);
+    expect(response.body).toEqual({ success: false, message: 'Erro interno do servidor.' });
+  });
+});
+
+describe('GET /list-orders', () => {
+  const savedOrder = new Order({
+    id: 42, userId, status: 'cancelled', createdAt: date, updatedAt,
+    items: [{ id: 101, productId: item.productId, productName: 'Nome na compra', quantity: 2, unitPrice: 20.1 }],
+  });
+
+  it('lists only the authenticated customer orders with saved items, status and totals', async () => {
+    repositories.findOrdersByUserId.mockResolvedValue([savedOrder]);
+    const response = await request(app).get('/list-orders').set('Cookie', authCookie);
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ success: true, data: { orders: [{
+      id: 42, userId, status: 'cancelled', createdAt: date.toISOString(), updatedAt: updatedAt.toISOString(),
+      items: [{ id: 101, productId: item.productId, name: 'Nome na compra', quantity: 2, unitPrice: 20.1, subtotal: 40.2 }],
+      totalItems: 2, total: 40.2,
+    }] } });
+    expect(repositories.findOrdersByUserId).toHaveBeenCalledExactlyOnceWith(userId);
+    expect(repositories.findAllOrders).not.toHaveBeenCalled();
+    expect(repositories.findProductsByIds).not.toHaveBeenCalled();
+    expect(repositories.createOrder).not.toHaveBeenCalled();
+  });
+
+  it('uses the database administrator flag to list all orders', async () => {
+    repositories.findUserById.mockResolvedValue({ id: userId, isAdmin: true });
+    repositories.findAllOrders.mockResolvedValue([savedOrder]);
+    const response = await request(app).get('/list-orders').set('Cookie', authCookie);
+    expect(response.status).toBe(200);
+    expect(response.body.data.orders).toHaveLength(1);
+    expect(repositories.findAllOrders).toHaveBeenCalledExactlyOnceWith();
+    expect(repositories.findOrdersByUserId).not.toHaveBeenCalled();
+  });
+
+  it('returns an empty list for a customer without orders', async () => {
+    repositories.findOrdersByUserId.mockResolvedValue([]);
+    const response = await request(app).get('/list-orders').set('Cookie', authCookie);
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ success: true, data: { orders: [] } });
+  });
+
+  it.each([undefined, 'access_token=invalid'])('requires a valid session (%s)', async (cookie) => {
+    const req = request(app).get('/list-orders');
+    if (cookie) req.set('Cookie', cookie);
+    const response = await req;
+    expect(response.status).toBe(401);
+    expect(repositories.findUserById).not.toHaveBeenCalled();
+    expect(repositories.findAllOrders).not.toHaveBeenCalled();
+    expect(repositories.findOrdersByUserId).not.toHaveBeenCalled();
+  });
+
+  it.each(['userId=another-user', 'isAdmin=true'])('rejects client overrides: %s', async (query) => {
+    const response = await request(app).get(`/list-orders?${query}`).set('Cookie', authCookie);
+    expect(response.status).toBe(400);
+    expect(repositories.findAllOrders).not.toHaveBeenCalled();
+    expect(repositories.findOrdersByUserId).not.toHaveBeenCalled();
+  });
+
+  it('rejects sessions for a deleted user', async () => {
+    repositories.findUserById.mockResolvedValue(null);
+    const response = await request(app).get('/list-orders').set('Cookie', authCookie);
+    expect(response.status).toBe(404);
+    expect(repositories.findAllOrders).not.toHaveBeenCalled();
+    expect(repositories.findOrdersByUserId).not.toHaveBeenCalled();
+  });
+
+  it('forwards read failures to the error middleware', async () => {
+    repositories.findOrdersByUserId.mockRejectedValue(new Error('database unavailable'));
+    const response = await request(app).get('/list-orders').set('Cookie', authCookie);
     expect(response.status).toBe(500);
     expect(response.body).toEqual({ success: false, message: 'Erro interno do servidor.' });
   });

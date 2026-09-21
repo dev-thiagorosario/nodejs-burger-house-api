@@ -179,6 +179,26 @@ o limite numérico do resumo do carrinho. Sessão ausente, inválida ou expirada
 retorna `401 Unauthorized`; usuário ou produto inexistente retorna `404 Not Found`;
 produto inativo retorna `409 Conflict`.
 
+## Listagem de pedidos
+
+`GET /list-orders`
+
+Exige o cookie `access_token` do login (`credentials: 'include'` no frontend).
+Clientes recebem somente seus próprios pedidos; administradores recebem todos.
+A permissão é consultada no cadastro do usuário no banco a cada requisição.
+A rota não recebe corpo nem parâmetros de consulta.
+
+Retorna `200 OK` com `{ "success": true, "data": { "orders": [] } }`.
+Quando houver pedidos, cada elemento de `orders` tem o mesmo formato de
+`data.order` da criação: `id`, `userId`, `status`, `items`, `totalItems`, `total`,
+`createdAt` e `updatedAt`. A ordenação é por data de criação decrescente, com ID
+decrescente como desempate; os itens são ordenados por ID crescente.
+Todos os status são incluídos. Nomes e preços são os salvos na compra, mesmo que
+o catálogo tenha sido alterado ou o produto esteja inativo.
+
+Sessão ausente ou inválida retorna `401`, usuário inexistente retorna `404` e
+parâmetros não suportados retornam `400`. Sem pedidos, `orders` é uma lista vazia.
+
 ## Dropdown de status dos pedidos
 
 `GET /list-order-statuses`

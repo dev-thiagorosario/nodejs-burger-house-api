@@ -37,6 +37,52 @@ function setup() {
   return { query, release, connect, repository };
 }
 
+describe('PostgresOrderRepository listing', () => {
+  const firstItem = { item_id: 302, product_id: 'classic-burger', name: 'Nome histórico', quantity: 2, price: '25.90' };
+
+  it('groups saved items and maps persisted status without querying the current product catalog', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [
+      { ...orderRow, status: 'pickedUp', ...firstItem },
+      { ...orderRow, status: 'pickedUp', item_id: 310, product_id: 'fries', name: 'Batata', quantity: 1, price: '14.90' },
+      { ...orderRow, id: 81, status: 'cancelled', ...firstItem, item_id: 301 },
+    ] });
+    const orders = await new PostgresOrderRepository({ query } as unknown as Pool).findAll();
+    expect(orders.map(order => order.id)).toEqual([82, 81]);
+    expect(orders.map(order => order.status)).toEqual(['pickedUp', 'cancelled']);
+    expect(orders[0]?.items).toHaveLength(2);
+    expect(orders[0]?.items[0]?.productName).toBe('Nome histórico');
+    expect(orders[0]?.total).toBe(66.7);
+    expect(query).toHaveBeenCalledExactlyOnceWith(expect.stringContaining('ORDER BY o.created_at DESC, o.id DESC, i.id ASC'), []);
+    expect(query.mock.calls[0]?.[0]).toContain('JOIN order_statuses');
+    expect(query.mock.calls[0]?.[0]).not.toContain('JOIN products');
+  });
+
+  it('filters customer orders in SQL with a bound user ID', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [] });
+    const repository = new PostgresOrderRepository({ query } as unknown as Pool);
+    expect(await repository.findByUserId(data.userId)).toEqual([]);
+    expect(query).toHaveBeenCalledExactlyOnceWith(expect.stringContaining('WHERE o.user_id = $1'), [data.userId]);
+  });
+
+  it('preserves an order without items', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [{ ...orderRow, status: 'pending', item_id: null }] });
+    const orders = await new PostgresOrderRepository({ query } as unknown as Pool).findAll();
+    expect(orders).toHaveLength(1);
+    expect(orders[0]?.items).toEqual([]);
+    expect(orders[0]?.total).toBe(0);
+  });
+
+  it('returns an empty list and propagates database errors', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [] });
+    const repository = new PostgresOrderRepository({ query } as unknown as Pool);
+    expect(await repository.findAll()).toEqual([]);
+    const error = new Error('database unavailable');
+    query.mockRejectedValue(error);
+    await expect(repository.findAll()).rejects.toBe(error);
+    await expect(repository.findByUserId(data.userId)).rejects.toBe(error);
+  });
+});
+
 describe('PostgresOrderRepository.create', () => {
   it('creates a pending order and item snapshots atomically using database-generated IDs and timestamps', async () => {
     const { query, release, connect, repository } = setup();
