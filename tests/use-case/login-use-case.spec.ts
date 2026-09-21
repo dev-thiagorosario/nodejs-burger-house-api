@@ -5,7 +5,7 @@ import type { IHashComparer } from '../../src/providers/i-hash-provider.js';
 import type { ITokenProvider } from '../../src/providers/i-token-provider.js';
 import type { IUserReader } from '../../src/repository/i-user-repository.js';
 import { InvalidCredentialsError } from '../../src/exception/invalid-credentials-error.js';
-import { LoginUseCase } from '../../src/use-case/login-use-case.js';
+import { LoginUseCase } from '../../src/use-case/auth/login-use-case.js';
 
 const user = new User({
   id: 'a76c2afe-5996-48ca-9262-e01e9b68bdee',

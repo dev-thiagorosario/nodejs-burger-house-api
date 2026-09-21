@@ -59,6 +59,16 @@ export class PostgresProductRepository implements IProductRepository {
     return result.rows.map(toProduct);
   }
 
+  async findByIds(ids: string[]): Promise<Product[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+    const result = await this.pool.query<ProductRow>(
+      `SELECT ${columns}, ${imageColumns} FROM products WHERE id = ANY($1::varchar[])`, [ids],
+    );
+    return result.rows.map(toProduct);
+  }
+
   async findByCategoryId(categoryId: number): Promise<Product[]> {
     const result = await this.pool.query<ProductRow>(
       `SELECT ${columns}, ${imageColumns} FROM products WHERE category_id = $1 ORDER BY id`, [categoryId],

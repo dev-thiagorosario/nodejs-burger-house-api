@@ -41,6 +41,33 @@ describe('PostgresProductRepository', () => {
     expect(await repository.findByCategoryId(2)).toEqual([]);
   });
 
+  it('loads multiple products in one parameterized query and preserves inactive products', async () => {
+    const secondRow = { ...row, id: 'fries', title: 'Batata Frita', price: '14.90', is_active: true };
+    const { query, repository } = setup([row, secondRow]);
+    const result = await repository.findByIds([row.id, secondRow.id]);
+    expect(result).toEqual([product, new Product({
+      id: secondRow.id, name: secondRow.title, description: secondRow.description,
+      images: secondRow.images, imageAlt: secondRow.image_alt,
+      price: 14.9, categoryId: secondRow.category_id, isActive: true,
+      createdAt: secondRow.created_at, updatedAt: secondRow.updated_at,
+    })]);
+    expect(query).toHaveBeenCalledOnce();
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('WHERE id = ANY($1::varchar[])'), [[row.id, secondRow.id]]);
+    expect(query.mock.calls[0]?.[0]).not.toContain('is_active =');
+  });
+
+  it('returns only found products when some requested IDs do not exist', async () => {
+    const { repository } = setup();
+    expect(await repository.findByIds([row.id, 'missing'])).toEqual([product]);
+    expect(await setup([]).repository.findByIds(['missing'])).toEqual([]);
+  });
+
+  it('does not query the database for an empty list of IDs', async () => {
+    const { query, repository } = setup();
+    expect(await repository.findByIds([])).toEqual([]);
+    expect(query).not.toHaveBeenCalled();
+  });
+
   it('uses the domain fallback for nullable alternative text', async () => {
     const { query, repository } = setup();
     query.mockResolvedValue({ rows: [{ ...row, image_alt: null }] });
@@ -88,6 +115,7 @@ describe('PostgresProductRepository', () => {
     await expect(repository.create(product)).rejects.toBe(error);
     await expect(repository.update(product)).rejects.toBe(error);
     await expect(repository.findById(row.id)).rejects.toBe(error);
+    await expect(repository.findByIds([row.id])).rejects.toBe(error);
     await expect(repository.findAll()).rejects.toBe(error);
     await expect(repository.findByCategoryId(1)).rejects.toBe(error);
   });

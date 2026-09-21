@@ -5,7 +5,7 @@ import { UserAlreadyExistsError } from '../../src/exception/user-already-exists-
 import { InvalidPasswordError } from '../../src/policy/password-policy.js';
 import type { IHashProvider } from '../../src/providers/i-hash-provider.js';
 import type { IUserRepository } from '../../src/repository/i-user-repository.js';
-import { CreateUserUseCase } from '../../src/use-case/create-user-use-case.js';
+import { CreateUserUseCase } from '../../src/use-case/identity/create-user-use-case.js';
 
 const existingUser = new User({
   id: 'a76c2afe-5996-48ca-9262-e01e9b68bdee',

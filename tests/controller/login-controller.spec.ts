@@ -3,12 +3,12 @@ import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import { describe, expect, it, vi } from 'vitest';
 
-import { LoginController } from '../../src/Http/controller/login-controller.js';
+import { LoginController } from '../../src/Http/controller/auth/login-controller.js';
 import { User } from '../../src/entities/user-entity.js';
 import type { IHashComparer } from '../../src/providers/i-hash-provider.js';
 import type { ITokenProvider } from '../../src/providers/i-token-provider.js';
 import type { IUserReader } from '../../src/repository/i-user-repository.js';
-import { LoginUseCase } from '../../src/use-case/login-use-case.js';
+import { LoginUseCase } from '../../src/use-case/auth/login-use-case.js';
 
 function createApp(options: { userExists?: boolean; passwordMatches?: boolean }) {
   const user = new User({

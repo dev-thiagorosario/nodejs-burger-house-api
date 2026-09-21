@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 
-import type { LogoutUseCase } from '../../use-case/logout-use-case.js';
-import { AuthCookieManager } from '../helper/auth-cookie-manager.js';
+import type { LogoutUseCase } from '../../../use-case/auth/logout-use-case.js';
+import { AuthCookieManager } from '../../helper/auth-cookie-manager.js';
 
 export class LogoutController {
   constructor(private readonly logoutUseCase: LogoutUseCase) {}

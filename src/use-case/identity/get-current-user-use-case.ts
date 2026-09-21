@@ -1,5 +1,5 @@
-import { UserNotFoundError } from '../exception/user-not-found-error.js';
-import type { IUserReader } from '../repository/i-user-repository.js';
+import { UserNotFoundError } from '../../exception/user-not-found-error.js';
+import type { IUserReader } from '../../repository/i-user-repository.js';
 
 export interface GetCurrentUserOutput {
   id: string;
@@ -11,7 +11,7 @@ export interface GetCurrentUserOutput {
 
 
 export class GetCurrentUserUseCase {
-  constructor(private readonly userRepository: IUserReader) {}
+  constructor(private readonly userRepository: IUserReader) { }
 
   async execute(userId: string): Promise<GetCurrentUserOutput> {
 

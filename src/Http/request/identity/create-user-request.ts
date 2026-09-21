@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { PasswordPolicy } from '../../policy/password-policy.js';
+import { PasswordPolicy } from '../../../policy/password-policy.js';
 
 export const createUserBodySchema = z.strictObject({
   fullName: z

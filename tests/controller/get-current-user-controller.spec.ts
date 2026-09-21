@@ -1,10 +1,10 @@
 import type { Request, Response } from 'express';
 import { describe, expect, it, vi } from 'vitest';
 
-import { GetCurrentUserController } from '../../src/Http/controller/get-current-user-controller.js';
+import { GetCurrentUserController } from '../../src/Http/controller/identity/get-current-user-controller.js';
 import { AuthMiddleware } from '../../src/Http/middleware/auth-middleware.js';
 import { User } from '../../src/entities/user-entity.js';
-import { GetCurrentUserUseCase } from '../../src/use-case/get-current-user-use-case.js';
+import { GetCurrentUserUseCase } from '../../src/use-case/identity/get-current-user-use-case.js';
 
 function setup(userExists = true) {
   const user = new User({
