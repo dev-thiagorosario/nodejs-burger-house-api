@@ -1,4 +1,4 @@
-import type { IAuthCookieManager } from '../providers/i-auth-cookie-manager.js';
+import type { IAuthCookieManager } from '../../providers/i-auth-cookie-manager.js';
 
 export interface LogoutOutput {
   success: boolean;

@@ -21,6 +21,7 @@ function product() {
 function repository(found: Product | null = null) {
   return {
     findById: vi.fn(async () => found),
+    findByIds: vi.fn(async () => found ? [found] : []),
     findAll: vi.fn(async () => found ? [found] : []),
     findByCategoryId: vi.fn(async () => found ? [found] : []),
     create: vi.fn(async (value: Product) => value),

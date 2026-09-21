@@ -2,6 +2,7 @@ import type { Product } from '../entities/product-entity.js';
 
 export interface IProductReader {
   findById(id: string): Promise<Product | null>;
+  findByIds(ids: string[]): Promise<Product[]>;
   findAll(): Promise<Product[]>;
   findByCategoryId(categoryId: number): Promise<Product[]>;
 }

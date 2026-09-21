@@ -1,7 +1,7 @@
-import type { IHashComparer } from '../providers/i-hash-provider.js';
-import type { ITokenProvider } from '../providers/i-token-provider.js';
-import type { IUserReader } from '../repository/i-user-repository.js';
-import { InvalidCredentialsError } from '../exception/invalid-credentials-error.js';
+import type { IHashComparer } from '../../providers/i-hash-provider.js';
+import type { ITokenProvider } from '../../providers/i-token-provider.js';
+import type { IUserReader } from '../../repository/i-user-repository.js';
+import { InvalidCredentialsError } from '../../exception/invalid-credentials-error.js';
 
 export interface LoginInput {
   email: string;
