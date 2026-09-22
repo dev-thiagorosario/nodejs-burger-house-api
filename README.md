@@ -118,6 +118,194 @@ No frontend, envie a requisição com `credentials: 'include'` para que o navega
 processe o cookie quando a API estiver em outra origem. O logout remove o cookie,
 mas não revoga cópias do JWT, que permanecem válidas até a expiração.
 
+## Criação de pedidos
+
+`POST /create-order`
+
+Chame esta rota quando o cliente finalizar o carrinho. Exige o cookie
+`access_token` obtido no login; no frontend, use `credentials: 'include'`.
+Envie somente os identificadores e as quantidades dos produtos, no mesmo formato
+de `POST /cart/summary`:
+
+```json
+{
+  "items": [
+    { "productId": "classic-burger", "quantity": 2 }
+  ]
+}
+```
+
+O usuário é identificado pela sessão. A API consulta os nomes, preços e
+disponibilidade dos produtos no banco no momento da finalização e cria o pedido
+com o status inicial `pending` (pendente). Os nomes e preços são preservados nos
+itens do pedido. Produtos repetidos são agrupados, somando suas quantidades.
+O pedido e todos os seus itens são gravados na mesma transação: uma falha desfaz
+toda a criação. Os IDs do pedido e dos itens são gerados pelo banco.
+
+Retorna `201 Created`:
+
+```json
+{
+  "success": true,
+  "message": "Pedido criado com sucesso.",
+  "data": {
+    "order": {
+      "id": 6,
+      "userId": "a76c2afe-5996-48ca-9262-e01e9b68bdee",
+      "status": "pending",
+      "items": [
+        {
+          "id": 10,
+          "productId": "classic-burger",
+          "name": "Classic Burger",
+          "unitPrice": 25.9,
+          "quantity": 2,
+          "subtotal": 51.8
+        }
+      ],
+      "totalItems": 2,
+      "total": 51.8,
+      "createdAt": "2026-09-21T12:00:00.000Z",
+      "updatedAt": "2026-09-21T12:00:00.000Z"
+    }
+  }
+}
+```
+
+Carrinho vazio, quantidades inválidas e campos extras como `userId`, `status`,
+`statusId`, preços ou totais retornam `400 Bad Request`. A quantidade acumulada
+por produto deve ser um inteiro entre 1 e 2.147.483.647, e o total deve respeitar
+o limite numérico do resumo do carrinho. Sessão ausente, inválida ou expirada
+retorna `401 Unauthorized`; usuário ou produto inexistente retorna `404 Not Found`;
+produto inativo retorna `409 Conflict`.
+
+## Listagem de pedidos
+
+`GET /orders` (também disponível pelo alias de compatibilidade `GET /list-orders`).
+
+Exige o cookie `access_token` do login (`credentials: 'include'` no frontend).
+Clientes recebem somente seus próprios pedidos; administradores recebem todos.
+A permissão é consultada no cadastro do usuário no banco a cada requisição.
+A rota aceita somente o parâmetro de consulta opcional `status`. Não recebe corpo;
+o identificador do usuário vem exclusivamente da sessão autenticada. `userId`,
+`isAdmin` e outros parâmetros de consulta não são aceitos.
+
+```http
+GET /orders
+GET /orders?status=pending
+GET /orders?status=withdrawn
+GET /orders?status=cancelled
+```
+
+Sem `status`, retorna todos os pedidos permitidos no contexto do usuário.
+Com `status`, a filtragem acontece no PostgreSQL, junto da restrição por usuário
+para clientes. Administradores podem consultar pedidos de todos os usuários,
+também respeitando o filtro selecionado.
+
+| Filtro da API | Status no domínio, no banco e na resposta |
+| --- | --- |
+| `pending` | `pending` |
+| `withdrawn` | `pickedUp` |
+| `cancelled` | `cancelled` |
+
+`OrderStatus.fromFilter` centraliza a conversão. A consulta reutiliza o JOIN
+`orders.status_id = order_statuses.id` e filtra por `order_statuses.name` com
+parâmetros SQL, sem depender dos IDs cadastrados para cada status.
+
+Retorna `200 OK` com `{ "success": true, "data": { "orders": [] } }`.
+Quando houver pedidos, cada elemento de `orders` tem o mesmo formato de
+`data.order` da criação: `id`, `userId`, `status`, `items`, `totalItems`, `total`,
+`createdAt`, `updatedAt` e `pickedUpAt`, mais `user: { id, fullName }`.
+O valor de saída `pickedUp` é preservado para manter consistência com os demais
+outputs de pedidos. A ordenação é por data de criação decrescente, com ID
+decrescente como desempate; os itens são ordenados por ID crescente.
+Nomes e preços são os salvos na compra, mesmo que
+o catálogo tenha sido alterado ou o produto esteja inativo.
+
+Sessão ausente ou inválida retorna `401`, usuário inexistente retorna `404` e
+parâmetros não suportados retornam `400`. Sem pedidos, `orders` é uma lista vazia.
+
+Exemplo de resposta para `GET /orders?status=withdrawn`:
+
+```json
+{
+  "success": true,
+  "data": {
+    "orders": [
+      {
+        "id": 6,
+        "userId": "a76c2afe-5996-48ca-9262-e01e9b68bdee",
+        "status": "pickedUp",
+        "items": [
+          {
+            "id": 10,
+            "productId": "classic-burger",
+            "name": "Classic Burger",
+            "unitPrice": 25.9,
+            "quantity": 2,
+            "subtotal": 51.8
+          }
+        ],
+        "totalItems": 2,
+        "total": 51.8,
+        "createdAt": "2026-09-21T12:00:00.000Z",
+        "updatedAt": "2026-09-21T12:30:00.000Z",
+        "pickedUpAt": "2026-09-21T12:30:00.000Z",
+        "user": {
+          "id": "a76c2afe-5996-48ca-9262-e01e9b68bdee",
+          "fullName": "Cliente Teste"
+        }
+      }
+    ]
+  }
+}
+```
+
+Um status inválido (incluindo `pickedUp` no filtro, vazio ou repetido) retorna
+`400 Bad Request`:
+
+```json
+{
+  "success": false,
+  "message": "Verifique os dados informados.",
+  "errors": [
+    {
+      "field": "status",
+      "message": "O status deve ser pending, withdrawn ou cancelled."
+    }
+  ]
+}
+```
+
+Os testes de integração de pedidos usam `TEST_DATABASE_URL` e schemas isolados,
+com dois clientes, um administrador e IDs de status diferentes dos seeders.
+Cobrem filtros no PostgreSQL, isolamento entre usuários e o contrato HTTP.
+
+## Dropdown de status dos pedidos
+
+`GET /list-order-statuses`
+
+Retorna `200 OK` com os registros de `order_statuses`, ordenados por ID, para
+preencher o dropdown. A lista é consultada no banco a cada requisição. Exemplo
+com os dados do seeder:
+
+```json
+{
+  "success": true,
+  "data": {
+    "statuses": [
+      { "id": 1, "name": "pending" },
+      { "id": 2, "name": "pickedUp" },
+      { "id": 3, "name": "cancelled" }
+    ]
+  }
+}
+```
+
+A listagem é pública, seguindo o dropdown de categorias, e retorna `statuses: []`
+se não houver registros. O status `pending` precisa existir para criar pedidos;
+ele já é cadastrado por `npm run db:seed` ou `npm run db:seed:order-statuses`.
+
 ## Desenvolvimento local
 
 Com o PostgreSQL configurado em `DATABASE_URL`:

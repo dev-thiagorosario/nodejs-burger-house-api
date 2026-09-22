@@ -12,6 +12,7 @@ export interface OrderProps {
   items?: readonly OrderItemProps[];
   createdAt: Date;
   updatedAt: Date;
+  pickedUpAt?: Date | null;
 }
 
 export class InvalidOrderError extends Error {
@@ -30,6 +31,7 @@ export class Order {
   private itemsValue: readonly OrderItem[];
   private readonly createdAtValue: Date;
   private updatedAtValue: Date;
+  private pickedUpAtValue: Date | null;
 
   constructor(props: OrderProps) {
     if (!Number.isSafeInteger(props.id) || props.id <= 0) {
@@ -63,6 +65,11 @@ export class Order {
     this.itemsValue = items;
     this.createdAtValue = new Date(props.createdAt);
     this.updatedAtValue = new Date(props.updatedAt);
+    if (props.pickedUpAt && (!Number.isFinite(props.pickedUpAt.getTime()) ||
+      props.pickedUpAt > props.updatedAt || !status.isPickedUp())) {
+      throw new InvalidOrderError('A data de retirada do pedido é inválida.');
+    }
+    this.pickedUpAtValue = props.pickedUpAt ? new Date(props.pickedUpAt) : null;
   }
 
   get status(): OrderStatus { return this.statusValue.value; }
@@ -71,6 +78,7 @@ export class Order {
   get total(): number { return this.getTotal(); }
   get createdAt(): Date { return new Date(this.createdAtValue); }
   get updatedAt(): Date { return new Date(this.updatedAtValue); }
+  get pickedUpAt(): Date | null { return this.pickedUpAtValue ? new Date(this.pickedUpAtValue) : null; }
 
   getTotal(): number {
     return this.calculateTotalCents(this.itemsValue) / 100;
@@ -114,6 +122,7 @@ export class Order {
     }
     this.statusValue = this.statusValue.transitionTo(OrderStatusObject.pickedUp());
     this.touch();
+    this.pickedUpAtValue = new Date(this.updatedAtValue);
   }
 
   private ensurePending(): void {

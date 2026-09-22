@@ -32,6 +32,16 @@ import { ListCategoriesUseCase } from '../use-case/category/list-categories-use-
 import { ListCategoriesController } from '../Http/controller/category/list-categories-controller.js';
 import { CartSummaryController } from '../Http/controller/cart/cart-summary-controller.js';
 import { BuildCartSummaryUseCase } from '../use-case/cart/build-cart-summary-use-case.js';
+import { CreateOrderController } from '../Http/controller/order/create-order-controller.js';
+import { ListOrderStatusesController } from '../Http/controller/order/list-order-statuses-controller.js';
+import { PostgresOrderRepository } from '../postgres-repository/postgres-order-repository.js';
+import { PostgresOrderStatusRepository } from '../postgres-repository/postgres-order-status-repository.js';
+import { CreateOrderUseCase } from '../use-case/order/create-order-use-case.js';
+import { ListOrderStatusesUseCase } from '../use-case/order/list-order-statuses-use-case.js';
+import { ListOrdersUseCase } from '../use-case/order/list-orders-use-case.js';
+import { ListOrdersController } from '../Http/controller/order/list-orders-controller.js';
+import { UpdateOrderStatusController } from '../Http/controller/order/update-order-status-controller.js';
+import { UpdateOrderStatusUseCase } from '../use-case/order/update-order-status-use-case.js';
 
 const pool = createPostgresPool(databaseUrl);
 const userRepository = new PostgresUserRepository(pool);
@@ -68,6 +78,15 @@ const categoryRepository = new PostgresCategoryRepository(pool);
 const listCategoriesUseCase = new ListCategoriesUseCase(categoryRepository);
 const listCategoriesController = new ListCategoriesController(listCategoriesUseCase);
 
+const orderRepository = new PostgresOrderRepository(pool);
+const createOrderUseCase = new CreateOrderUseCase(orderRepository, productRepository, userRepository);
+const createOrderController = new CreateOrderController(createOrderUseCase);
+const listOrdersController = new ListOrdersController(new ListOrdersUseCase(orderRepository, userRepository));
+const updateOrderStatusController = new UpdateOrderStatusController(new UpdateOrderStatusUseCase(orderRepository, userRepository));
+const orderStatusRepository = new PostgresOrderStatusRepository(pool);
+const listOrderStatusesUseCase = new ListOrderStatusesUseCase(orderStatusRepository);
+const listOrderStatusesController = new ListOrderStatusesController(listOrderStatusesUseCase);
+
 const router = Router();
 router.use(productImagesRouter(pool));
 
@@ -78,13 +97,18 @@ router.post('/logout', logoutController.handle);
 
 router.post('/register', createUserController.handle);
 
-router.post('/register-product', createProductController.handle);
-router.get('/list-product/:id', getProductByIdController.handle);
-router.get('/list-products', listProductsController.handle);
-router.get('/list-categories', listCategoriesController.handle);
-router.patch('/update-products/:id', updateProductController.handle);
-router.delete('/delete-products/:id', deleteProductController.handle);
-router.post('/cart/summary', cartSummaryController.handle);
+router.post('/register-product', authMiddleware.handle, createProductController.handle);
+router.get('/list-product/:id', authMiddleware.handle, getProductByIdController.handle);
+router.get('/list-products', authMiddleware.handle, listProductsController.handle);
+router.get('/list-categories', authMiddleware.handle, listCategoriesController.handle);
+router.patch('/update-products/:id', authMiddleware.handle, updateProductController.handle);
+router.delete('/delete-products/:id', authMiddleware.handle, deleteProductController.handle);
+router.post('/cart/summary', authMiddleware.handle, cartSummaryController.handle);
+router.post('/create-order', authMiddleware.handle, createOrderController.handle);
+router.get('/orders', authMiddleware.handle, listOrdersController.handle);
+router.get('/list-orders', authMiddleware.handle, listOrdersController.handle);
+router.patch('/update-order-status/:id', authMiddleware.handle, updateOrderStatusController.handle);
+router.get('/list-order-statuses', authMiddleware.handle, listOrderStatusesController.handle);
 
 export function closeApiDependencies(): Promise<void> {
   return pool.end();
