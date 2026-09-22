@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { OrderStatus, InvalidOrderStatusError, type OrderStatusValue } from '../../src/value-object/order-status-value-object.js';
+import { OrderStatus, InvalidOrderStatusError, type OrderStatusFilter, type OrderStatusValue } from '../../src/value-object/order-status-value-object.js';
 
 describe('OrderStatus', () => {
   it.each(['pending', 'pickedUp', 'cancelled'] as const)('compares %s by value and is immutable', value => {
@@ -33,5 +33,15 @@ describe('OrderStatus', () => {
     expect(OrderStatus.pending().isPending()).toBe(true);
     expect(OrderStatus.pickedUp().isPickedUp()).toBe(true);
     expect(OrderStatus.cancelled().isCancelled()).toBe(true);
+  });
+
+  it.each([
+    ['pending', 'pending'], ['withdrawn', 'pickedUp'], ['cancelled', 'cancelled'],
+  ] as const)('maps the API filter %s to the existing domain status %s', (filter, value) => {
+    expect(OrderStatus.fromFilter(filter).equals(new OrderStatus(value))).toBe(true);
+  });
+
+  it.each(['invalid', '', 'Pending', 'pickedUp', 'picked_up', null, 1])('rejects invalid API filter %j', (filter) => {
+    expect(() => OrderStatus.fromFilter(filter as OrderStatusFilter)).toThrow(InvalidOrderStatusError);
   });
 });

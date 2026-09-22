@@ -1,5 +1,6 @@
 import cookieParser from 'cookie-parser';
 import express from 'express';
+import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -351,46 +352,108 @@ describe('PATCH /update-order-status/:id', () => {
   });
 });
 
-describe('GET /list-orders', () => {
+describe.each(['/orders', '/list-orders'])('GET %s', (path) => {
   const savedOrder = new Order({
     id: 42, userId, status: 'cancelled', createdAt: date, updatedAt,
     items: [{ id: 101, productId: item.productId, productName: 'Nome na compra', quantity: 2, unitPrice: 20.1 }],
   });
+  const customer = { id: userId, fullName: 'Cliente Teste' };
+
+  function savedDetails(status: 'pending' | 'pickedUp' | 'cancelled', id = 42, owner = customer) {
+    return {
+      user: owner,
+      order: new Order({
+        id, userId: owner.id, status, createdAt: date, updatedAt,
+        items: [{ id: 101, productId: item.productId, productName: 'Nome na compra', quantity: 2, unitPrice: 20.1 }],
+      }),
+    };
+  }
 
   it('lists only the authenticated customer orders with saved items, status and totals', async () => {
-    repositories.findOrdersByUserId.mockResolvedValue([{ order: savedOrder, user: { id: userId, fullName: 'Cliente Teste' } }]);
-    const response = await request(app).get('/list-orders').set('Cookie', authCookie);
+    repositories.findAllOrders.mockResolvedValue([{ order: savedOrder, user: customer }]);
+    const response = await request(app).get(path).set('Cookie', authCookie);
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ success: true, data: { orders: [{
       id: 42, userId, status: 'cancelled', createdAt: date.toISOString(), updatedAt: updatedAt.toISOString(),
       items: [{ id: 101, productId: item.productId, name: 'Nome na compra', quantity: 2, unitPrice: 20.1, subtotal: 40.2 }],
       totalItems: 2, total: 40.2, pickedUpAt: null, user: { id: userId, fullName: 'Cliente Teste' },
     }] } });
-    expect(repositories.findOrdersByUserId).toHaveBeenCalledExactlyOnceWith(userId);
-    expect(repositories.findAllOrders).not.toHaveBeenCalled();
+    expect(repositories.findUserById).toHaveBeenCalledExactlyOnceWith(userId);
+    expect(repositories.findAllOrders).toHaveBeenCalledExactlyOnceWith({ userId });
+    expect(repositories.findOrdersByUserId).not.toHaveBeenCalled();
     expect(repositories.findProductsByIds).not.toHaveBeenCalled();
     expect(repositories.createOrder).not.toHaveBeenCalled();
   });
 
-  it('uses the database administrator flag to list all orders', async () => {
-    repositories.findUserById.mockResolvedValue({ id: userId, isAdmin: true });
-    repositories.findAllOrders.mockResolvedValue([{ order: savedOrder, user: { id: userId, fullName: 'Cliente Teste' } }]);
-    const response = await request(app).get('/list-orders').set('Cookie', authCookie);
+  it('returns every status without adding a status filter', async () => {
+    repositories.findAllOrders.mockResolvedValue([
+      savedDetails('pending', 43), savedDetails('pickedUp', 42), savedDetails('cancelled', 41),
+    ]);
+
+    const response = await request(app).get(path).set('Cookie', authCookie);
+
     expect(response.status).toBe(200);
+    expect(response.body.data.orders.map((order: { status: string }) => order.status))
+      .toEqual(['pending', 'pickedUp', 'cancelled']);
+    expect(repositories.findAllOrders).toHaveBeenCalledExactlyOnceWith({ userId });
+  });
+
+  it.each([
+    ['pending', 'pending'], ['withdrawn', 'pickedUp'], ['cancelled', 'cancelled'],
+  ] as const)('lists %s orders using the mapped repository filter', async (status, domainStatus) => {
+    repositories.findAllOrders.mockResolvedValue([savedDetails(domainStatus)]);
+
+    const response = await request(app).get(`${path}?status=${status}`).set('Cookie', authCookie);
+
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
     expect(response.body.data.orders).toHaveLength(1);
-    expect(repositories.findAllOrders).toHaveBeenCalledExactlyOnceWith();
+    expect(response.body.data.orders[0]).toMatchObject({ userId, status: domainStatus, total: 40.2 });
+    expect(repositories.findAllOrders).toHaveBeenCalledExactlyOnceWith({ userId, status: domainStatus });
     expect(repositories.findOrdersByUserId).not.toHaveBeenCalled();
   });
 
+  it('uses the database administrator flag to list all orders', async () => {
+    repositories.findUserById.mockResolvedValue({ id: userId, isAdmin: true });
+    const otherCustomer = { id: '22222222-2222-4222-8222-222222222222', fullName: 'Outro Cliente' };
+    repositories.findAllOrders.mockResolvedValue([
+      savedDetails('pending'), savedDetails('cancelled', 43, otherCustomer),
+    ]);
+    const response = await request(app).get(path).set('Cookie', authCookie);
+    expect(response.status).toBe(200);
+    expect(response.body.data.orders.map((order: { userId: string }) => order.userId)).toEqual([userId, otherCustomer.id]);
+    expect(repositories.findUserById).toHaveBeenCalledExactlyOnceWith(userId);
+    expect(repositories.findAllOrders).toHaveBeenCalledExactlyOnceWith({});
+    expect(repositories.findOrdersByUserId).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['pending', 'pending'], ['withdrawn', 'pickedUp'], ['cancelled', 'cancelled'],
+  ] as const)('allows administrators to filter all customers by %s', async (status, domainStatus) => {
+    repositories.findUserById.mockResolvedValue({ id: userId, isAdmin: true });
+    repositories.findAllOrders.mockResolvedValue([savedDetails(domainStatus)]);
+
+    const response = await request(app).get(`${path}?status=${status}`).set('Cookie', authCookie);
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.orders[0].status).toBe(domainStatus);
+    expect(repositories.findAllOrders).toHaveBeenCalledExactlyOnceWith({ status: domainStatus });
+  });
+
   it('returns an empty list for a customer without orders', async () => {
-    repositories.findOrdersByUserId.mockResolvedValue([]);
-    const response = await request(app).get('/list-orders').set('Cookie', authCookie);
+    repositories.findAllOrders.mockResolvedValue([]);
+    const response = await request(app).get(path).set('Cookie', authCookie);
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ success: true, data: { orders: [] } });
   });
 
-  it.each([undefined, 'access_token=invalid'])('requires a valid session (%s)', async (cookie) => {
-    const req = request(app).get('/list-orders');
+  it.each([
+    undefined,
+    'access_token=invalid',
+    `access_token=${new JwtTokenProvider('wrong-secret').generate(userId)}`,
+    `access_token=${jwt.sign({ sub: userId }, 'test-secret', { expiresIn: -1 })}`,
+  ])('requires a valid session (%s)', async (cookie) => {
+    const req = request(app).get(path);
     if (cookie) req.set('Cookie', cookie);
     const response = await req;
     expect(response.status).toBe(401);
@@ -399,24 +462,54 @@ describe('GET /list-orders', () => {
     expect(repositories.findOrdersByUserId).not.toHaveBeenCalled();
   });
 
-  it.each(['userId=another-user', 'isAdmin=true'])('rejects client overrides: %s', async (query) => {
-    const response = await request(app).get(`/list-orders?${query}`).set('Cookie', authCookie);
+  it.each(['userId=another-user', 'isAdmin=true', 'status=pending&userId=another-user'])('rejects client overrides: %s', async (query) => {
+    const response = await request(app).get(`${path}?${query}`).set('Cookie', authCookie);
     expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({ success: false, message: 'Verifique os dados informados.' });
+    expect(repositories.findUserById).not.toHaveBeenCalled();
+    expect(repositories.findAllOrders).not.toHaveBeenCalled();
+    expect(repositories.findOrdersByUserId).not.toHaveBeenCalled();
+  });
+
+  it('gets the user and optional status from the session and query even when the body attempts to override them', async () => {
+    repositories.findAllOrders.mockResolvedValue([{ order: savedOrder, user: customer }]);
+
+    const response = await request(app).get(path).set('Cookie', authCookie)
+      .send({ userId: '22222222-2222-4222-8222-222222222222', isAdmin: true, status: 'pending' });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.orders[0]).toMatchObject({ userId, status: 'cancelled' });
+    expect(repositories.findUserById).toHaveBeenCalledExactlyOnceWith(userId);
+    expect(repositories.findAllOrders).toHaveBeenCalledExactlyOnceWith({ userId });
+  });
+
+  it.each([
+    'invalid', 'banana', '', 'pickedUp', 'picked_up', 'Pending', 'Pendentes',
+    '%20pending%20', 'pending&status=cancelled',
+  ])('rejects invalid status query %s before accessing repositories', async (status) => {
+    const response = await request(app).get(`${path}?status=${status}`).set('Cookie', authCookie);
+
+    expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({
+      success: false, message: 'Verifique os dados informados.',
+      errors: [{ field: 'status', message: expect.any(String) }],
+    });
+    expect(repositories.findUserById).not.toHaveBeenCalled();
     expect(repositories.findAllOrders).not.toHaveBeenCalled();
     expect(repositories.findOrdersByUserId).not.toHaveBeenCalled();
   });
 
   it('rejects sessions for a deleted user', async () => {
     repositories.findUserById.mockResolvedValue(null);
-    const response = await request(app).get('/list-orders').set('Cookie', authCookie);
+    const response = await request(app).get(path).set('Cookie', authCookie);
     expect(response.status).toBe(404);
     expect(repositories.findAllOrders).not.toHaveBeenCalled();
     expect(repositories.findOrdersByUserId).not.toHaveBeenCalled();
   });
 
   it('forwards read failures to the error middleware', async () => {
-    repositories.findOrdersByUserId.mockRejectedValue(new Error('database unavailable'));
-    const response = await request(app).get('/list-orders').set('Cookie', authCookie);
+    repositories.findAllOrders.mockRejectedValue(new Error('database unavailable'));
+    const response = await request(app).get(path).set('Cookie', authCookie);
     expect(response.status).toBe(500);
     expect(response.body).toEqual({ success: false, message: 'Erro interno do servidor.' });
   });

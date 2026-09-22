@@ -1,4 +1,4 @@
-import type { Order } from '../entities/order-entity.js';
+import type { Order, OrderStatus } from '../entities/order-entity.js';
 import type { OrderItemProps } from '../entities/order-item-entity.js';
 
 export interface CreateOrderData {
@@ -19,9 +19,14 @@ export interface IOrderStatusWriter {
   updateStatus(id: number, statusId: number): Promise<OrderDetails>;
 }
 
+export interface OrderFilters {
+  userId?: string;
+  status?: OrderStatus;
+}
+
 export interface IOrderReader {
   findById(id: number): Promise<Order | null>;
-  findAll(): Promise<OrderDetails[]>;
+  findAll(filters?: OrderFilters): Promise<OrderDetails[]>;
   findByUserId(userId: string): Promise<OrderDetails[]>;
 }
 

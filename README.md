@@ -181,23 +181,105 @@ produto inativo retorna `409 Conflict`.
 
 ## Listagem de pedidos
 
-`GET /list-orders`
+`GET /orders` (também disponível pelo alias de compatibilidade `GET /list-orders`).
 
 Exige o cookie `access_token` do login (`credentials: 'include'` no frontend).
 Clientes recebem somente seus próprios pedidos; administradores recebem todos.
 A permissão é consultada no cadastro do usuário no banco a cada requisição.
-A rota não recebe corpo nem parâmetros de consulta.
+A rota aceita somente o parâmetro de consulta opcional `status`. Não recebe corpo;
+o identificador do usuário vem exclusivamente da sessão autenticada. `userId`,
+`isAdmin` e outros parâmetros de consulta não são aceitos.
+
+```http
+GET /orders
+GET /orders?status=pending
+GET /orders?status=withdrawn
+GET /orders?status=cancelled
+```
+
+Sem `status`, retorna todos os pedidos permitidos no contexto do usuário.
+Com `status`, a filtragem acontece no PostgreSQL, junto da restrição por usuário
+para clientes. Administradores podem consultar pedidos de todos os usuários,
+também respeitando o filtro selecionado.
+
+| Filtro da API | Status no domínio, no banco e na resposta |
+| --- | --- |
+| `pending` | `pending` |
+| `withdrawn` | `pickedUp` |
+| `cancelled` | `cancelled` |
+
+`OrderStatus.fromFilter` centraliza a conversão. A consulta reutiliza o JOIN
+`orders.status_id = order_statuses.id` e filtra por `order_statuses.name` com
+parâmetros SQL, sem depender dos IDs cadastrados para cada status.
 
 Retorna `200 OK` com `{ "success": true, "data": { "orders": [] } }`.
 Quando houver pedidos, cada elemento de `orders` tem o mesmo formato de
 `data.order` da criação: `id`, `userId`, `status`, `items`, `totalItems`, `total`,
-`createdAt` e `updatedAt`. A ordenação é por data de criação decrescente, com ID
+`createdAt`, `updatedAt` e `pickedUpAt`, mais `user: { id, fullName }`.
+O valor de saída `pickedUp` é preservado para manter consistência com os demais
+outputs de pedidos. A ordenação é por data de criação decrescente, com ID
 decrescente como desempate; os itens são ordenados por ID crescente.
-Todos os status são incluídos. Nomes e preços são os salvos na compra, mesmo que
+Nomes e preços são os salvos na compra, mesmo que
 o catálogo tenha sido alterado ou o produto esteja inativo.
 
 Sessão ausente ou inválida retorna `401`, usuário inexistente retorna `404` e
 parâmetros não suportados retornam `400`. Sem pedidos, `orders` é uma lista vazia.
+
+Exemplo de resposta para `GET /orders?status=withdrawn`:
+
+```json
+{
+  "success": true,
+  "data": {
+    "orders": [
+      {
+        "id": 6,
+        "userId": "a76c2afe-5996-48ca-9262-e01e9b68bdee",
+        "status": "pickedUp",
+        "items": [
+          {
+            "id": 10,
+            "productId": "classic-burger",
+            "name": "Classic Burger",
+            "unitPrice": 25.9,
+            "quantity": 2,
+            "subtotal": 51.8
+          }
+        ],
+        "totalItems": 2,
+        "total": 51.8,
+        "createdAt": "2026-09-21T12:00:00.000Z",
+        "updatedAt": "2026-09-21T12:30:00.000Z",
+        "pickedUpAt": "2026-09-21T12:30:00.000Z",
+        "user": {
+          "id": "a76c2afe-5996-48ca-9262-e01e9b68bdee",
+          "fullName": "Cliente Teste"
+        }
+      }
+    ]
+  }
+}
+```
+
+Um status inválido (incluindo `pickedUp` no filtro, vazio ou repetido) retorna
+`400 Bad Request`:
+
+```json
+{
+  "success": false,
+  "message": "Verifique os dados informados.",
+  "errors": [
+    {
+      "field": "status",
+      "message": "O status deve ser pending, withdrawn ou cancelled."
+    }
+  ]
+}
+```
+
+Os testes de integração de pedidos usam `TEST_DATABASE_URL` e schemas isolados,
+com dois clientes, um administrador e IDs de status diferentes dos seeders.
+Cobrem filtros no PostgreSQL, isolamento entre usuários e o contrato HTTP.
 
 ## Dropdown de status dos pedidos
 

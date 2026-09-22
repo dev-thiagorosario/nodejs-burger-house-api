@@ -47,23 +47,69 @@ describe('PostgresOrderRepository listing', () => {
       { ...orderRow, status: 'pickedUp', ...firstItem },
       { ...orderRow, status: 'pickedUp', item_id: 310, product_id: 'fries', name: 'Batata', quantity: 1, price: '14.90' },
       { ...orderRow, id: 81, status: 'cancelled', ...firstItem, item_id: 301 },
+      { ...orderRow, id: 80, status: 'pending', ...firstItem, item_id: 300 },
     ] });
     const orders = await new PostgresOrderRepository({ query } as unknown as Pool).findAll();
-    expect(orders.map(({ order }) => order.id)).toEqual([82, 81]);
-    expect(orders.map(({ order }) => order.status)).toEqual(['pickedUp', 'cancelled']);
+    expect(orders.map(({ order }) => order.id)).toEqual([82, 81, 80]);
+    expect(orders.map(({ order }) => order.status)).toEqual(['pickedUp', 'cancelled', 'pending']);
     expect(orders[0]?.order.items).toHaveLength(2);
     expect(orders[0]?.order.items[0]?.productName).toBe('Nome histórico');
     expect(orders[0]?.order.total).toBe(66.7);
     expect(query).toHaveBeenCalledExactlyOnceWith(expect.stringContaining('ORDER BY o.created_at DESC, o.id DESC, i.id ASC'), []);
     expect(query.mock.calls[0]?.[0]).toContain('JOIN order_statuses');
     expect(query.mock.calls[0]?.[0]).not.toContain('JOIN products');
+    expect(query.mock.calls[0]?.[0]).not.toContain('WHERE');
   });
 
   it('filters customer orders in SQL with a bound user ID', async () => {
     const query = vi.fn().mockResolvedValue({ rows: [] });
     const repository = new PostgresOrderRepository({ query } as unknown as Pool);
+    expect(await repository.findAll({ userId: data.userId })).toEqual([]);
+    expect(query).toHaveBeenCalledExactlyOnceWith(expect.stringContaining('WHERE o.user_id = $1'), [data.userId]);
+    expect(query.mock.calls[0]?.[0]).not.toContain('s.name =');
+  });
+
+  it('preserves findByUserId as a customer-scoped listing', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [] });
+    const repository = new PostgresOrderRepository({ query } as unknown as Pool);
     expect(await repository.findByUserId(data.userId)).toEqual([]);
     expect(query).toHaveBeenCalledExactlyOnceWith(expect.stringContaining('WHERE o.user_id = $1'), [data.userId]);
+  });
+
+  it.each(['pending', 'pickedUp', 'cancelled'] as const)('filters %s by the persisted status name for administrators', async status => {
+    const query = vi.fn().mockResolvedValue({ rows: [{ ...orderRow, status, ...firstItem }] });
+    const repository = new PostgresOrderRepository({ query } as unknown as Pool);
+
+    const orders = await repository.findAll({ status });
+
+    expect(orders.map(({ order }) => order.status)).toEqual([status]);
+    expect(query).toHaveBeenCalledExactlyOnceWith(expect.stringContaining('WHERE s.name = $1'), [status]);
+    expect(query.mock.calls[0]?.[0]).toContain('JOIN order_statuses s ON s.id = o.status_id');
+    expect(query.mock.calls[0]?.[0]).not.toContain('o.user_id =');
+    expect(query.mock.calls[0]?.[0]).not.toContain(status);
+  });
+
+  it.each(['pending', 'pickedUp', 'cancelled'] as const)('combines customer isolation and %s filtering in SQL', async status => {
+    const query = vi.fn().mockResolvedValue({ rows: [{ ...orderRow, status, ...firstItem }] });
+    const repository = new PostgresOrderRepository({ query } as unknown as Pool);
+
+    const orders = await repository.findAll({ userId: data.userId, status });
+
+    expect(orders.map(({ order }) => ({ userId: order.userId, status: order.status })))
+      .toEqual([{ userId: data.userId, status }]);
+    expect(query).toHaveBeenCalledExactlyOnceWith(
+      expect.stringContaining('WHERE o.user_id = $1 AND s.name = $2'), [data.userId, status],
+    );
+    expect(query.mock.calls[0]?.[0]).not.toContain(data.userId);
+    expect(query.mock.calls[0]?.[0]).not.toContain(status);
+  });
+
+  it('does not add predicates for an empty filter object', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [] });
+    const repository = new PostgresOrderRepository({ query } as unknown as Pool);
+
+    expect(await repository.findAll({})).toEqual([]);
+    expect(query).toHaveBeenCalledExactlyOnceWith(expect.not.stringContaining('WHERE'), []);
   });
 
   it('preserves an order without items', async () => {

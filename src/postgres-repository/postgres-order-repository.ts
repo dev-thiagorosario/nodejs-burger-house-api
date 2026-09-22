@@ -2,7 +2,7 @@ import type { Pool, PoolClient } from 'pg';
 
 import { Order, InvalidOrderError, type OrderStatus } from '../entities/order-entity.js';
 import type { OrderItemProps } from '../entities/order-item-entity.js';
-import type { CreateOrderData, IOrderCreator, IOrderStatusWriter, OrderDetails } from '../repository/i-order-repository.js';
+import type { CreateOrderData, IOrderCreator, IOrderStatusWriter, OrderDetails, OrderFilters } from '../repository/i-order-repository.js';
 import { OrderNotFoundError } from '../exception/order-not-found-error.js';
 import { InvalidOrderStatusError, OrderStatus as Status } from '../value-object/order-status-value-object.js';
 
@@ -35,15 +35,29 @@ interface ListedOrderRow extends OrderRow {
 export class PostgresOrderRepository implements IOrderCreator, IOrderStatusWriter {
   constructor(private readonly pool: Pool) {}
 
-  async findAll(): Promise<OrderDetails[]> {
-    return this.list();
+  async findAll(filters: OrderFilters = {}): Promise<OrderDetails[]> {
+    return this.list(filters);
   }
 
   async findByUserId(userId: string): Promise<OrderDetails[]> {
-    return this.list(userId);
+    return this.findAll({ userId });
   }
 
-  private async list(userId?: string, orderId?: number, connection: Pool | PoolClient = this.pool): Promise<OrderDetails[]> {
+  private async list(filters: OrderFilters = {}, orderId?: number, connection: Pool | PoolClient = this.pool): Promise<OrderDetails[]> {
+    const conditions: string[] = [];
+    const values: Array<string | number> = [];
+    if (orderId !== undefined) {
+      values.push(orderId);
+      conditions.push(`o.id = $${values.length}`);
+    }
+    if (filters.userId !== undefined) {
+      values.push(filters.userId);
+      conditions.push(`o.user_id = $${values.length}`);
+    }
+    if (filters.status !== undefined) {
+      values.push(filters.status);
+      conditions.push(`s.name = $${values.length}`);
+    }
     const result = await connection.query<ListedOrderRow>(
       `SELECT o.id, o.user_id, o.created_at, o.updated_at, o.picked_up_at, u.full_name, s.name AS status,
          i.id AS item_id, i.product_id, i.name, i.quantity, i.price
@@ -51,9 +65,9 @@ export class PostgresOrderRepository implements IOrderCreator, IOrderStatusWrite
        JOIN order_statuses s ON s.id = o.status_id
        JOIN users u ON u.id = o.user_id
        LEFT JOIN order_items i ON i.order_id = o.id
-       ${orderId !== undefined ? 'WHERE o.id = $1' : userId === undefined ? '' : 'WHERE o.user_id = $1'}
+       ${conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''}
        ORDER BY o.created_at DESC, o.id DESC, i.id ASC`,
-      orderId !== undefined ? [orderId] : userId === undefined ? [] : [userId],
+      values,
     );
     const orders = new Map<number, { row: ListedOrderRow; items: OrderItemProps[] }>();
     for (const row of result.rows) {

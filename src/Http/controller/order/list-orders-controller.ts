@@ -25,7 +25,10 @@ export class ListOrdersController {
       return;
     }
     try {
-      const orders = await this.listOrdersUseCase.execute(session.data.userId);
+      const orders = await this.listOrdersUseCase.execute({
+        userId: session.data.userId,
+        ...(query.data.status === undefined ? {} : { status: query.data.status }),
+      });
       response.status(200).json({ success: true, data: { orders } });
     } catch (error: unknown) {
       if (error instanceof UserNotFoundError) {

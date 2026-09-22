@@ -97,17 +97,18 @@ router.post('/logout', logoutController.handle);
 
 router.post('/register', createUserController.handle);
 
-router.post('/register-product', createProductController.handle);
-router.get('/list-product/:id', getProductByIdController.handle);
-router.get('/list-products', listProductsController.handle);
-router.get('/list-categories', listCategoriesController.handle);
-router.patch('/update-products/:id', updateProductController.handle);
-router.delete('/delete-products/:id', deleteProductController.handle);
-router.post('/cart/summary', cartSummaryController.handle);
+router.post('/register-product', authMiddleware.handle, createProductController.handle);
+router.get('/list-product/:id', authMiddleware.handle, getProductByIdController.handle);
+router.get('/list-products', authMiddleware.handle, listProductsController.handle);
+router.get('/list-categories', authMiddleware.handle, listCategoriesController.handle);
+router.patch('/update-products/:id', authMiddleware.handle, updateProductController.handle);
+router.delete('/delete-products/:id', authMiddleware.handle, deleteProductController.handle);
+router.post('/cart/summary', authMiddleware.handle, cartSummaryController.handle);
 router.post('/create-order', authMiddleware.handle, createOrderController.handle);
+router.get('/orders', authMiddleware.handle, listOrdersController.handle);
 router.get('/list-orders', authMiddleware.handle, listOrdersController.handle);
 router.patch('/update-order-status/:id', authMiddleware.handle, updateOrderStatusController.handle);
-router.get('/list-order-statuses', listOrderStatusesController.handle);
+router.get('/list-order-statuses', authMiddleware.handle, listOrderStatusesController.handle);
 
 export function closeApiDependencies(): Promise<void> {
   return pool.end();
